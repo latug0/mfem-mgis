@@ -47,8 +47,12 @@
 #include "mfem/fem/datacollection.hpp"
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
+#define USE_PROFILER 1
+#define LIB_PROFILER_IMPLEMENTATION
+#include "libProfiler.h"
 
 int main(const int argc, char** const argv) {
+  PROFILER_ENABLE;
   constexpr const auto dim = mfem_mgis::size_type{3};
   constexpr const auto eps = mfem_mgis::real{1e-10};
   constexpr const auto xthr = mfem_mgis::real(1) / 2;
@@ -103,15 +107,15 @@ int main(const int argc, char** const argv) {
     []() ->  std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::GMRESSolver> pgmres(new mfem::GMRESSolver);
         pgmres->iterative_mode = false;
-        pgmres->SetRelTol(1e-12);
-        pgmres->SetAbsTol(1e-12);
+        pgmres->SetRelTol(1e-8);
+        pgmres->SetAbsTol(1e-8);
         pgmres->SetMaxIter(300);
         pgmres->SetPrintLevel(1);
         return pgmres;
     }
     , []() ->  std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver);
-        pcg->SetRelTol(1e-12);
+        pcg->SetRelTol(1e-8);
         pcg->SetMaxIter(300);
         pcg->SetPrintLevel(1);
         return pcg;
@@ -130,6 +134,11 @@ int main(const int argc, char** const argv) {
   auto linearsolver = 0;
   // options treatment
   mfem::OptionsParser args(argc, argv);
+
+
+  PROFILER_START(0_total);
+  PROFILER_START(1_initialize);
+
   args.AddOption(&mesh_file, "-m", "--mesh", "Mesh file to use.");
   args.AddOption(&library, "-l", "--library", "Material library.");
   args.AddOption(&order, "-o", "--order",
@@ -149,12 +158,19 @@ int main(const int argc, char** const argv) {
     std::cerr << "Invalid test case\n";
     return EXIT_FAILURE;
   }
+  PROFILER_END(); PROFILER_START(2_read_mesh);
   // creating the finite element workspace
   auto mesh = std::make_shared<mfem::Mesh>(mesh_file, 1, 1);
   if (dim != mesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
     return EXIT_FAILURE;
   }
+  PROFILER_END(); PROFILER_START(3_refine_mesh);
+
+  for (int i = 0 ; i < 3 ; i++)
+    mesh->UniformRefinement();
+
+  PROFILER_END(); PROFILER_START(4_initialize_fem); 
   // building the non linear problem
   mfem_mgis::NonLinearEvolutionProblem problem(
       std::make_shared<mfem_mgis::FiniteElementDiscretization>(
@@ -194,6 +210,7 @@ int main(const int argc, char** const argv) {
   // which needs to be on x=xmin or x=xmax axis.
   // ux=0, uy=0, uz=0 on this point.
   const auto nnodes = problem.getFiniteElementSpace().GetTrueVSize() / dim;
+  std::cout << "Number of nodes: " << nnodes << std::endl;
   mfem::Array<int> ess_tdof_list;
   ess_tdof_list.SetSize(dim);
   for (int k = 0; k < dim; k++) {
@@ -211,6 +228,7 @@ int main(const int argc, char** const argv) {
   solver.SetRelTol(1e-12);
   solver.SetAbsTol(1e-12);
   solver.SetMaxIter(10);
+  PROFILER_END(); PROFILER_START(5_solve);
   problem.solve(1);
   // recover the solution as a grid function
   auto& u1 = problem.getUnknownsAtEndOfTheTimeStep();
@@ -226,6 +244,8 @@ int main(const int argc, char** const argv) {
   } else {
     std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
   }
+  PROFILER_END(); PROFILER_START(6_postprocess);
+
   // exporting the results
   mfem::ParaViewDataCollection paraview_dc(
       "PeriodicTestOutput-" + std::to_string(tcase), mesh.get());
@@ -233,5 +253,9 @@ int main(const int argc, char** const argv) {
   paraview_dc.SetCycle(0);
   paraview_dc.SetTime(0.0);
   paraview_dc.Save();
+  PROFILER_END(); 
+  PROFILER_END(); 
+  LogProfiler();
+  PROFILER_DISABLE;
   return EXIT_SUCCESS;
 }

@@ -29,11 +29,28 @@ function(add_periodic_test ncase nsolver)
   endif((CMAKE_HOST_WIN32) AND (NOT MSYS))
 endfunction(add_periodic_test)
 
-foreach(ncase RANGE 0 5)
-  foreach(nsolver RANGE 0 1)
+foreach(ncase RANGE 0 0)
+  foreach(nsolver RANGE 1 1)
     add_periodic_test(${ncase} ${nsolver})
   endforeach(nsolver)
 endforeach(ncase)
+
+add_executable(PeriodicMfem
+  EXCLUDE_FROM_ALL
+  PeriodicMfem.cxx)
+target_link_libraries(PeriodicMfem
+  PRIVATE MFEMMGIS)
+  add_dependencies(check PeriodicMfem)
+
+function(add_per_mfem_test ncase)
+  set(test "PerMfemTest-${ncase}")
+  add_test(NAME ${test}
+   COMMAND PeriodicMfem
+   "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube_2mat_per.mesh"
+   "--test-case" "${ncase}")
+endfunction(add_per_mfem_test)
+
+add_per_mfem_test(0)
 
 add_executable(UnilateralTensileTest
   EXCLUDE_FROM_ALL
