@@ -411,6 +411,55 @@ int main(int argc, char *argv[])
    // 1. Parse command-line options.
    const char *mesh_file = "cube_2mat_per.mesh";
    int order = 1;
+  constexpr const auto eps = 1e-10;
+  constexpr const auto xthr = 1. / 2;
+  std::array<void (*)(const mfem::Vector&, mfem::Vector&), 6u> solutions = {
+      +[](const mfem::Vector& x, mfem::Vector& u) {
+        constexpr const auto gradx = 1. / 3;
+        u = 0.;
+        if (x(0) < xthr) {
+          u(0) = gradx * x(0);
+        } else {
+          u(0) = gradx * xthr - gradx * (x(0) - xthr);
+        }
+      },
+      +[](const mfem::Vector& x, mfem::Vector& u) {
+        constexpr const auto gradx = 4. / 30;
+        u = 0.;
+        if (x(0) < xthr) {
+          u(0) = gradx * x(0);
+        } else {
+          u(0) = gradx * xthr - gradx * (x(0) - xthr);
+        }
+      },
+      +[](const mfem::Vector& x, mfem::Vector& u) {
+        constexpr const auto gradx = 4. / 30;
+        u = 0.;
+        if (x(0) < xthr) {
+          u(0) = gradx * x(0);
+        } else {
+          u(0) = gradx * xthr - gradx * (x(0) - xthr);
+        }
+      },
+      +[](const mfem::Vector& x, mfem::Vector& u) {
+        constexpr const auto gradx = 1. / 3;
+        u = 0.;
+        if (x(0) < xthr) {
+          u(1) = gradx * x(0);
+        } else {
+          u(1) = gradx * xthr - gradx * (x(0) - xthr);
+        }
+      },
+      +[](const mfem::Vector& x, mfem::Vector& u) {
+        constexpr const auto gradx = 1. / 3;
+        u = 0.;
+        if (x(0) < xthr) {
+          u(2) = gradx * x(0);
+        } else {
+          u(2) = gradx * xthr - gradx * (x(0) - xthr);
+        }
+      },
+      +[](const mfem::Vector&, mfem::Vector& u) { u = 0.; }};
 
    PROFILER_START(0_total);
    PROFILER_START(1_initialize);
@@ -507,16 +556,26 @@ int main(int argc, char *argv[])
    Vector B, X;
    a->FormLinearSystem(ess_tdof_list, x, rhs, A, X, B);
    //   GSSmoother M(A);
-   CGSolver pcg;
-   pcg.SetRelTol(1e-13);
-   pcg.SetMaxIter(300);
-   pcg.SetPrintLevel(1);
-   //   PCG(A, M, B, X, 1, 500, 1e-20, 0.0);
-   pcg.Mult(B, X);
+   CGSolver *pcg;
+   pcg = new CGSolver();
+   pcg->SetRelTol(1e-13);
+   pcg->SetMaxIter(300);
+   pcg->SetPrintLevel(1);
+   pcg->SetOperator(A);
+   pcg->Mult(B, X);
 
    a->RecoverFEMSolution(X, rhs, x);
    
    PROFILER_END(); PROFILER_START(6_postprocess);
+
+   mfem::VectorFunctionCoefficient sol_coef(dim, solutions[tcase]);
+   const auto error = x.ComputeL2Error(sol_coef);
+   if (error > eps) {
+     std::cerr << "Error is greater than threshold (" << error << " > " << eps << ")\n";
+     return EXIT_FAILURE;
+   } else {
+     std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
+  }
    
    // 14. Save the result
    {

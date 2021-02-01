@@ -235,6 +235,7 @@ int main(const int argc, char** const argv) {
   mfem::GridFunction x(&problem.getFiniteElementSpace());
   x.MakeTRef(&problem.getFiniteElementSpace(), u1, 0);
   x.SetFromTrueVector();
+  PROFILER_END(); PROFILER_START(6_postprocess);
   // comparison to analytical solution
   mfem::VectorFunctionCoefficient sol_coef(dim, solutions[tcase]);
   const auto error = x.ComputeL2Error(sol_coef);
@@ -244,7 +245,6 @@ int main(const int argc, char** const argv) {
   } else {
     std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
   }
-  PROFILER_END(); PROFILER_START(6_postprocess);
 
   // exporting the results
   mfem::ParaViewDataCollection paraview_dc(
