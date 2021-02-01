@@ -14,7 +14,11 @@
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
 
+#define USE_PROFILER 1
+#include "MFEMMGIS/libProfiler.h"
+
 int main(const int argc, char** const argv) {
+  PROFILER_ENABLE;
   constexpr const auto dim = mfem_mgis::size_type{3};
   const char* mesh_file = nullptr;
   const char* behaviour = nullptr;
@@ -24,6 +28,7 @@ int main(const int argc, char** const argv) {
   auto order = 1;
   // options treatment
   mfem::OptionsParser args(argc, argv);
+  PROFILER_START(0_total);
   args.AddOption(&mesh_file, "-m", "--mesh", "Mesh file to use.");
   args.AddOption(&reference_file, "-r", "--reference-file", "Reference file.");
   args.AddOption(&behaviour, "-b", "--behaviour", "Name of the behaviour.");
@@ -192,5 +197,8 @@ int main(const int argc, char** const argv) {
     check(g1[i], g1_ref, eps, "invalid transverse strain");
     check(v[i], v_ref, eps, "invalid internal state variable");
   }
+  PROFILER_END(); 
+  LogProfiler();
+  PROFILER_DISABLE;
   return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }

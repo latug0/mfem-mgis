@@ -266,7 +266,6 @@ public:
 };
 
 
-
 class ElasticityIntegratorExpensive: public BilinearFormIntegrator
 {
 protected:
@@ -391,82 +390,85 @@ public:
 
 int main(int argc, char *argv[])
 {
-   PROFILER_ENABLE;
-   // 1. Parse command-line options.
-   const char *mesh_file = "cube_2mat_per.mesh";
-   int order = 1;
+  PROFILER_ENABLE;
+  // 1. Parse command-line options.
+  const char *mesh_file = "cube_2mat_per.mesh";
+  int order = 1;
+  int optimize = 0;
   constexpr const auto eps = 1e-10;
   constexpr const auto xthr = 1. / 2;
   std::array<void (*)(const mfem::Vector&, mfem::Vector&), 6u> solutions = {
-      +[](const mfem::Vector& x, mfem::Vector& u) {
-        constexpr const auto gradx = 1. / 3;
-        u = 0.;
-        if (x(0) < xthr) {
-          u(0) = gradx * x(0);
-        } else {
-          u(0) = gradx * xthr - gradx * (x(0) - xthr);
-        }
-      },
-      +[](const mfem::Vector& x, mfem::Vector& u) {
-        constexpr const auto gradx = 4. / 30;
-        u = 0.;
-        if (x(0) < xthr) {
-          u(0) = gradx * x(0);
-        } else {
-          u(0) = gradx * xthr - gradx * (x(0) - xthr);
-        }
-      },
-      +[](const mfem::Vector& x, mfem::Vector& u) {
-        constexpr const auto gradx = 4. / 30;
-        u = 0.;
-        if (x(0) < xthr) {
-          u(0) = gradx * x(0);
-        } else {
-          u(0) = gradx * xthr - gradx * (x(0) - xthr);
-        }
-      },
-      +[](const mfem::Vector& x, mfem::Vector& u) {
-        constexpr const auto gradx = 1. / 3;
-        u = 0.;
-        if (x(0) < xthr) {
-          u(1) = gradx * x(0);
-        } else {
-          u(1) = gradx * xthr - gradx * (x(0) - xthr);
-        }
-      },
-      +[](const mfem::Vector& x, mfem::Vector& u) {
-        constexpr const auto gradx = 1. / 3;
-        u = 0.;
-        if (x(0) < xthr) {
-          u(2) = gradx * x(0);
-        } else {
-          u(2) = gradx * xthr - gradx * (x(0) - xthr);
-        }
-      },
-      +[](const mfem::Vector&, mfem::Vector& u) { u = 0.; }};
+    +[](const mfem::Vector& x, mfem::Vector& u) {
+      constexpr const auto gradx = 1. / 3;
+      u = 0.;
+      if (x(0) < xthr) {
+	u(0) = gradx * x(0);
+      } else {
+	u(0) = gradx * xthr - gradx * (x(0) - xthr);
+      }
+    },
+    +[](const mfem::Vector& x, mfem::Vector& u) {
+      constexpr const auto gradx = 4. / 30;
+      u = 0.;
+      if (x(0) < xthr) {
+	u(0) = gradx * x(0);
+      } else {
+	u(0) = gradx * xthr - gradx * (x(0) - xthr);
+      }
+    },
+    +[](const mfem::Vector& x, mfem::Vector& u) {
+      constexpr const auto gradx = 4. / 30;
+      u = 0.;
+      if (x(0) < xthr) {
+	u(0) = gradx * x(0);
+      } else {
+	u(0) = gradx * xthr - gradx * (x(0) - xthr);
+      }
+    },
+    +[](const mfem::Vector& x, mfem::Vector& u) {
+      constexpr const auto gradx = 1. / 3;
+      u = 0.;
+      if (x(0) < xthr) {
+	u(1) = gradx * x(0);
+      } else {
+	u(1) = gradx * xthr - gradx * (x(0) - xthr);
+      }
+    },
+    +[](const mfem::Vector& x, mfem::Vector& u) {
+      constexpr const auto gradx = 1. / 3;
+      u = 0.;
+      if (x(0) < xthr) {
+	u(2) = gradx * x(0);
+      } else {
+	u(2) = gradx * xthr - gradx * (x(0) - xthr);
+      }
+    },
+    +[](const mfem::Vector&, mfem::Vector& u) { u = 0.; }};
 
-   PROFILER_START(0_total);
-   PROFILER_START(1_initialize);
-   OptionsParser args(argc, argv);
-   args.AddOption(&mesh_file, "-m", "--mesh",
-                  "Mesh file to use.");
-   args.AddOption(&order, "-o", "--order",
-                  "Finite element order (polynomial degree).");
-   args.AddOption(&tcase, "-t", "--test-case",
-                  "number of the case : Exx->11, Eyy->12, Ezz->13 ...\\");
-   args.Parse();
-   if (!args.Good())
-   {
+  PROFILER_START(0_total);
+  PROFILER_START(1_initialize);
+  OptionsParser args(argc, argv);
+  args.AddOption(&mesh_file, "-m", "--mesh",
+		 "Mesh file to use.");
+  args.AddOption(&order, "-o", "--order",
+		 "Finite element order (polynomial degree).");
+  args.AddOption(&optimize, "-opt", "--optimize",
+		 "Level of optimization (0: no optim, 1: optimization activated).");
+  args.AddOption(&tcase, "-t", "--test-case",
+		 "number of the case : Exx->11, Eyy->12, Ezz->13 ...\\");
+  args.Parse();
+  if (!args.Good())
+    {
       args.PrintUsage(cout);
       return 1;
-   }
-   args.PrintOptions(cout);
+    }
+  args.PrintOptions(cout);
 
-   PROFILER_END(); PROFILER_START(2_read_mesh);
-   // 2. Read the mesh from the given mesh file. We can handle triangular,
-   //    quadrilateral, tetrahedral or hexahedral elements with the same code.
-   Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   int dim = mesh->Dimension();
+  PROFILER_END(); PROFILER_START(2_read_mesh);
+  // 2. Read the mesh from the given mesh file. We can handle triangular,
+  //    quadrilateral, tetrahedral or hexahedral elements with the same code.
+  Mesh *mesh = new Mesh(mesh_file, 1, 1);
+  int dim = mesh->Dimension();
 
   PROFILER_END(); PROFILER_START(3_refine_mesh);
 
@@ -474,122 +476,122 @@ int main(int argc, char *argv[])
     mesh->UniformRefinement();
 
   PROFILER_END(); PROFILER_START(4_initialize_fem); 
-   // 5. Define a finite element space on the mesh. Here we use vector finite
-   //    elements, i.e. dim copies of a scalar finite element space. The vector
-   //    dimension is specified by the last argument of the FiniteElementSpace
-   //    constructor. 
-   FiniteElementCollection *fec;
-   FiniteElementSpace *fespace;
-   fec = new H1_FECollection(order, dim);
-   fespace = new FiniteElementSpace(mesh, fec, dim);
+  // 5. Define a finite element space on the mesh. Here we use vector finite
+  //    elements, i.e. dim copies of a scalar finite element space. The vector
+  //    dimension is specified by the last argument of the FiniteElementSpace
+  //    constructor. 
+  FiniteElementCollection *fec;
+  FiniteElementSpace *fespace;
+  fec = new H1_FECollection(order, dim);
+  fespace = new FiniteElementSpace(mesh, fec, dim);
 
-   int ndof = fespace->GetTrueVSize() / dim;
-   std::cout << "Number of nodes: " << ndof << std::endl;
+  int ndof = fespace->GetTrueVSize() / dim;
+  std::cout << "Number of nodes: " << ndof << std::endl;
 
-   //    Define the solution vector x as a finite element grid function
-   //    corresponding to fespace. Initialize x with initial guess of zero,
-   //    which satisfies the boundary conditions.
-   GridFunction x(fespace);
-   x = -1.0; 
+  //    Define the solution vector x as a finite element grid function
+  //    corresponding to fespace. Initialize x with initial guess of zero,
+  //    which satisfies the boundary conditions.
+  GridFunction x(fespace);
+  x = -1.0; 
 
-   // 6. Set up the bilinear form a(.,.) on the finite element space
-   //    corresponding to the linear elasticity integrator with piece-wise
-   //    constants coefficient lambda and mu.
-   Vector lambda(mesh->attributes.Max());
-   lambda = 100.0;
-   if (mesh->attributes.Max() > 1)
-     lambda(1) = lambda(0)*2;
-   PWConstCoefficient lambda_func(lambda); 
-   // Question: pourquoi piece wise constant ?
-   // lié aux attributs : constant par zone matériau	
-   Vector mu(mesh->attributes.Max());
-   mu = 75.0;
-   if (mesh->attributes.Max() > 1)
-     mu(1) = mu(0)*2;
-   PWConstCoefficient mu_func(mu);
+  // 6. Set up the bilinear form a(.,.) on the finite element space
+  //    corresponding to the linear elasticity integrator with piece-wise
+  //    constants coefficient lambda and mu.
+  Vector lambda(mesh->attributes.Max());
+  lambda = 100.0;
+  if (mesh->attributes.Max() > 1)
+    lambda(1) = lambda(0)*2;
+  PWConstCoefficient lambda_func(lambda); 
+  // Question: pourquoi piece wise constant ?
+  // lié aux attributs : constant par zone matériau	
+  Vector mu(mesh->attributes.Max());
+  mu = 75.0;
+  if (mesh->attributes.Max() > 1)
+    mu(1) = mu(0)*2;
+  PWConstCoefficient mu_func(mu);
 
-   // Determine the list of true (i.e. conforming) essential boundary dofs.
-   Array<int> ess_tdof_list, ess_bdr(mesh->bdr_attributes.Max());
+  // Determine the list of true (i.e. conforming) essential boundary dofs.
+  Array<int> ess_tdof_list, ess_bdr(mesh->bdr_attributes.Max());
    
-   ess_bdr = 0;
-   cout << "Full periodic" << endl;
-   MFEM_VERIFY( (tcase >= 0) && (tcase <= 5) && (dim == 3),"");
+  ess_bdr = 0;
+  cout << "Full periodic" << endl;
+  MFEM_VERIFY( (tcase >= 0) && (tcase <= 5) && (dim == 3),"");
 
-   ess_tdof_list.SetSize(dim);
-   for (int k = 0; k < dim; k++) 
-     {
-       int tgdof = 0+k*ndof;
-       ess_tdof_list[k] = tgdof;
-       x(tgdof) = 0.0;
-     }
+  ess_tdof_list.SetSize(dim);
+  for (int k = 0; k < dim; k++) 
+    {
+      int tgdof = 0+k*ndof;
+      ess_tdof_list[k] = tgdof;
+      x(tgdof) = 0.0;
+    }
   
 
-   BilinearForm *a = new BilinearForm(fespace);
+  BilinearForm *a = new BilinearForm(fespace);
   
-   // 7. Set up the right-hand side of the FEM linear system.
-   LinearForm rhs(fespace);
-   if (0) 
-     {
-       a->AddDomainIntegrator(new ElasticityIntegrator(lambda_func,mu_func));
-       rhs.AddDomainIntegrator(new DomainLFGrad2Integrator(lambda_func,mu_func,tcase));
-     }
-   else
-     {
-       a->AddDomainIntegrator(new ElasticityIntegratorExpensive(lambda_func,mu_func));
-       rhs.AddDomainIntegrator(new DomainLFGrad2IntegratorExpensive(lambda_func,mu_func,tcase));
-     }
-   PROFILER_END(); PROFILER_START(5_solve);
+  // 7. Set up the right-hand side of the FEM linear system.
+  LinearForm rhs(fespace);
+  if (optimize == 0) 
+    {
+      a->AddDomainIntegrator(new ElasticityIntegratorExpensive(lambda_func,mu_func));
+      rhs.AddDomainIntegrator(new DomainLFGrad2IntegratorExpensive(lambda_func,mu_func,tcase));
+    }
+  else
+    {
+      a->AddDomainIntegrator(new ElasticityIntegrator(lambda_func,mu_func));
+      rhs.AddDomainIntegrator(new DomainLFGrad2Integrator(lambda_func,mu_func,tcase));
+    }
+  PROFILER_END(); PROFILER_START(5_solve);
 
-   PROFILER_START(5.1_matrix_assembly);
-   a->Assemble();
-   PROFILER_END(); PROFILER_START(5.2_rhs_assembly);
-   rhs.Assemble();
+  PROFILER_START(5.1_matrix_assembly);
+  a->Assemble();
+  PROFILER_END(); PROFILER_START(5.2_rhs_assembly);
+  rhs.Assemble();
 
-   PROFILER_END(); PROFILER_START(5.3_form_linear_system);
-   SparseMatrix A;
-   Vector B, X;
-   a->FormLinearSystem(ess_tdof_list, x, rhs, A, X, B);
+  PROFILER_END(); PROFILER_START(5.3_form_linear_system);
+  SparseMatrix A;
+  Vector B, X;
+  a->FormLinearSystem(ess_tdof_list, x, rhs, A, X, B);
 
-   PROFILER_END(); PROFILER_START(5.4_effective_solve);
-   CGSolver *pcg;
-   pcg = new CGSolver();
-   pcg->SetRelTol(1e-13);
-   pcg->SetMaxIter(300);
-   pcg->SetPrintLevel(1);
-   pcg->SetOperator(A);
-   //   GSSmoother M(A);
-   //   pcg->SetPreconditioner(M);
-   pcg->Mult(B, X);
+  PROFILER_END(); PROFILER_START(5.4_effective_solve);
+  CGSolver *pcg;
+  pcg = new CGSolver();
+  pcg->SetRelTol(1e-13);
+  pcg->SetMaxIter(300);
+  pcg->SetPrintLevel(1);
+  pcg->SetOperator(A);
+  //   GSSmoother M(A);
+  //   pcg->SetPreconditioner(M);
+  pcg->Mult(B, X);
 
-   PROFILER_END(); PROFILER_START(5.5_recover_solution);
-   a->RecoverFEMSolution(X, rhs, x);
-   PROFILER_END();
-   PROFILER_END(); PROFILER_START(6_postprocess);
+  PROFILER_END(); PROFILER_START(5.5_recover_solution);
+  a->RecoverFEMSolution(X, rhs, x);
+  PROFILER_END();
+  PROFILER_END(); PROFILER_START(6_postprocess);
 
-   mfem::VectorFunctionCoefficient sol_coef(dim, solutions[tcase]);
-   const auto error = x.ComputeL2Error(sol_coef);
-   if (error > eps) {
-     std::cerr << "Error is greater than threshold (" << error << " > " << eps << ")\n";
-     return EXIT_FAILURE;
-   } else {
-     std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
+  mfem::VectorFunctionCoefficient sol_coef(dim, solutions[tcase]);
+  const auto error = x.ComputeL2Error(sol_coef);
+  if (error > eps) {
+    std::cerr << "Error is greater than threshold (" << error << " > " << eps << ")\n";
+    return EXIT_FAILURE;
+  } else {
+    std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
   }
    
-   // 14. Save the result
-   {
-     ParaViewDataCollection paraview_dc("lam", mesh);
-     paraview_dc.RegisterField("u",&x);
-     //     paraview_dc.SetLevelsOfDetail(4);
-     paraview_dc.SetCycle(0);
-     paraview_dc.SetTime(0.0);
-     //     paraview_dc.SetHighOrderOutput(true);
-     paraview_dc.Save();
-   }
+  // 14. Save the result
+  {
+    ParaViewDataCollection paraview_dc("lam", mesh);
+    paraview_dc.RegisterField("u",&x);
+    //     paraview_dc.SetLevelsOfDetail(4);
+    paraview_dc.SetCycle(0);
+    paraview_dc.SetTime(0.0);
+    //     paraview_dc.SetHighOrderOutput(true);
+    paraview_dc.Save();
+  }
    
-   PROFILER_END(); 
-   PROFILER_END(); 
-   LogProfiler();
-   PROFILER_DISABLE;
-   return 0;
+  PROFILER_END(); 
+  PROFILER_END(); 
+  LogProfiler();
+  PROFILER_DISABLE;
+  return 0;
 }
 
