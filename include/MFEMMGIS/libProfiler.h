@@ -146,6 +146,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // PROFILE/LOG
 
+void MpiPrintf( const char *szText );
+
 #ifndef LIB_PROFILER_PRINTF
 #define LIB_PROFILER_PRINTF printf
 #define LIB_BARRIER 
@@ -235,17 +237,6 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-void MpiPrintf( const char *szText )
-{
-  int rank; 
-#if LIB_MPI == 1
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#else
-  rank=0;
-#endif
-  printf("[%d] prof:%s", rank, szText);
-}
 
 #define	_NAME_SEPARATOR_			"|"
 #define	_THREADID_NAME_SEPARATOR_	"@"
@@ -364,7 +355,6 @@ void Zprofiler_disable();
 void Zprofiler_start( const char *profile_name );
 void Zprofiler_end( );
 void LogProfiler();
-
 //defines
 
 #define PROFILER_ENABLE Zprofiler_enable()
@@ -949,6 +939,17 @@ double startHighResolutionTimer()
     return ms;
 }
 #endif
+
+void MpiPrintf( const char *szText )
+{
+  int rank; 
+#if LIB_MPI == 1
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#else
+  rank=0;
+#endif
+  printf("[%d] prof:%s", rank, szText);
+}
 
 #endif  // LIB_PROFILER_IMPLEMENTATION
 

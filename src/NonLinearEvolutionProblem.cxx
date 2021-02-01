@@ -9,6 +9,8 @@
 #include "MFEMMGIS/ResidualOperator.hxx"
 #include "MFEMMGIS/MultiMaterialNonLinearIntegrator.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
+#define USE_PROFILER 1
+#include "MFEMMGIS/libProfiler.h"
 
 namespace mfem_mgis {
 
@@ -96,10 +98,14 @@ namespace mfem_mgis {
   void NonLinearEvolutionProblem::solve(const real dt) {
     mfem::Vector zero;
     this->mgis_integrator->setTimeIncrement(dt);
+    PROFILER_START(5A_Solve);
     this->solver.Mult(zero, this->u1);
+    PROFILER_END();
+    PROFILER_START(5B_CheckConvergence);
     if (!this->solver.GetConverged()) {
       mgis::raise("Newton solver did not converge");
     }
+    PROFILER_END();
   }  // end of solve
 
   NonLinearEvolutionProblem::~NonLinearEvolutionProblem() = default;

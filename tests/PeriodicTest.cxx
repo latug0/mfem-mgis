@@ -48,8 +48,7 @@
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
 #define USE_PROFILER 1
-#define LIB_PROFILER_IMPLEMENTATION
-#include "libProfiler.h"
+#include "MFEMMGIS/libProfiler.h"
 
 int main(const int argc, char** const argv) {
   PROFILER_ENABLE;

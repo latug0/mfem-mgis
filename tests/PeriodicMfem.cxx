@@ -51,8 +51,7 @@
 using namespace std;
 using namespace mfem;
 #define USE_PROFILER 1
-#define LIB_PROFILER_IMPLEMENTATION
-#include "libProfiler.h"
+#include "MFEMMGIS/libProfiler.h"
 
 int tcase = 0;
 
@@ -74,7 +73,7 @@ public:
   }
 
   void AssembleRHSElementVect(
-    const FiniteElement &el, ElementTransformation &Tr, Vector &elvect)
+    const FiniteElement &el, ElementTransformation &Tr, Vector &elvect) override
   {
     int dof = el.GetDof();
     int spaceDim = Tr.GetSpaceDim();
@@ -145,136 +144,130 @@ public:
   
   
 };
-///// Class for domain integrator L(v) := (f, grad v)
-//class DomainLFGrad2Integrator : public LinearFormIntegrator
-//{
-//protected:
-//  Coefficient *lambda, *mu;
-//private:
-//  Vector epsM, myvect, myres;
-//  DenseMatrix tBmat, gtBmat, Emat, dshape;
-//  int width, spaceDim;
-//
-//public:
-//   /// Constructs the domain integrator (Q, grad v)
-//  DomainLFGrad2Integrator(Coefficient &l, Coefficient &m, int sdim, int mcase)
-//  {
-//    lambda = &l; mu = &m;
-//    spaceDim = sdim;
-//    MFEM_ASSERT((spaceDim == 3)|| (spaceDim == 2), "space dimension has to be 2 or 3");
-//    if (spaceDim == 2)
-//      width = 3;
-//    if (spaceDim == 3)
-//      width = 6;
-//    myvect.SetSize(width);
-//    myres.SetSize(spaceDim);
-//    epsM.SetSize(width);
-//    epsM = 0.;
-//    Emat.SetSize(width);
-//    switch(mcase) {
-//    case 1:
-//      epsM(0)=1.;
-//      break;
-//    case 2:
-//      epsM(1)=1.;
-//      break;
-//    case 3:
-//      epsM(2)=1.;
-//      break;
-//    case 4:
-//      epsM(3)=1.;
-//      break;
-//    case 5:
-//      epsM(4)=1.;
-//      break;
-//    case 6:
-//      epsM(5)=1.;
-//      break;
-//    }
-//  }
-//  
-//  void AssembleRHSElementVect(
-//    const FiniteElement &el, ElementTransformation &Tr, Vector &elvect) override 
-//  {
-//    int dof = el.GetDof();
-//    gtBmat.SetSize(spaceDim,dof*width);
-//    tBmat.SetSize(spaceDim,width);
-//    dshape.SetSize(dof,spaceDim);
-//    elvect.SetSize(dof*spaceDim);
-//    elvect = 0.0;
-//    MFEM_ASSERT(spaceDim == Tr.GetSpaceDim(), "");
-//    
-//    const IntegrationRule *ir = IntRule;
-//    if (ir == NULL)
-//      {
-//	int intorder = 2 * el.GetOrder();
-//	ir = &IntRules.Get(el.GetGeomType(), intorder);
-//      }
-//    
-//    for (int i = 0; i < ir->GetNPoints(); i++)
-//      {
-//	const IntegrationPoint &ip = ir->IntPoint(i);
-//	Tr.SetIntPoint(&ip);
-//	el.CalcPhysDShape(Tr, dshape);
-//	double M = mu->Eval(Tr, ip);
-//	double L = lambda->Eval(Tr, ip);
-//	// Fill Emat
-//	Emat = 0.;
-//	for (int k = 0; k< spaceDim; k++)
-//	  {
-//	    // Extra-diagonal terms Emat
-//	    for (int l = 0; l< spaceDim; l++)
-//	      Emat(k,l) = L;
-//	    // Diagonal terms Emat
-//	    Emat(k,k) = L+2*M;
-//	  }
-//	// Diagonal terms
-//	for (int k = spaceDim; k < width; k++)
-//	  Emat(k,k)= M;
-//
-//	// Fill gtBmat
-//	gtBmat = 0.;
-//	for (int s = 0; s < dof; s++)
-//	  {
-//	    int offset = width*s;
-//	    // Fill gtBmat that depends on dof 's'.
-//	    // gtBmat(:,offset:offset+width) contains tBmat
-//	    // for dof 's'
-//	    for (int k = 0; k < spaceDim; k++) 
-//	      gtBmat(k,offset+k) = dshape(s,k);
-//	    gtBmat(0,offset+spaceDim) = dshape(s,1); // N_y 
-//	    gtBmat(1,offset+spaceDim) = dshape(s,0); // N_x 
-//	    if (spaceDim == 3) {
-//	      gtBmat(1,offset+4) = dshape(s,2); // N_z
-//	      gtBmat(2,offset+4) = dshape(s,1); // N_y
-//	      gtBmat(0,offset+5) = dshape(s,2); // N_z
-//	      gtBmat(2,offset+5) = dshape(s,0); // N_x
-//	    }
-//	  }
-//
-//	for (int s = 0; s < dof; s++)
-//	  {
-//	    // Fill tBmat that depends on 's'
-//	    int offset_s = width*s;
-//	    tBmat.CopyCols(gtBmat,offset_s,offset_s+width-1);
-//	    myvect = 0.;
-//	    // Do the dense algebra
-//	    Emat.Mult(epsM,myvect);
-//	    tBmat.Mult(myvect,myres);
-//	    // Multiply by the weight
-//	    myres *= -1 * ip.weight * Tr.Weight();
-//	    // Add the contribution to the RHS
-//	    for (int k = 0; k < spaceDim; k++)
-//	      elvect(dof*k+s) += myres[k];
-//	  }
-//      }
-//
-//}
-//};
+
+/// Class for domain integrator L(v) := (f, grad v)
+class DomainLFGrad2IntegratorExpensive : public LinearFormIntegrator
+{
+protected:
+  Coefficient *lambda, *mu;
+private:
+  Vector epsM, myvect, myres;
+  DenseMatrix tBmat, gtBmat, Emat, dshape;
+  static constexpr const int width=6;
+  static constexpr const int spaceDim=3;
+
+public:
+   /// Constructs the domain integrator (Q, grad v)
+  DomainLFGrad2IntegratorExpensive(Coefficient &l, Coefficient &m, int mcase)
+  {
+    lambda = &l; mu = &m;
+    myvect.SetSize(width);
+    myres.SetSize(spaceDim);
+    epsM.SetSize(width);
+    epsM = 0.;
+    Emat.SetSize(width);
+    switch(mcase) {
+    case 0:
+      epsM(0)=1.;
+      break;
+    case 1:
+      epsM(1)=1.;
+      break;
+    case 2:
+      epsM(2)=1.;
+      break;
+    case 3:
+      epsM(3)=1.;
+      break;
+    case 4:
+      epsM(4)=1.;
+      break;
+    case 5:
+      epsM(5)=1.;
+      break;
+    }
+  }
+  
+  void AssembleRHSElementVect(
+    const FiniteElement &el, ElementTransformation &Tr, Vector &elvect) override 
+  {
+    int dof = el.GetDof();
+    gtBmat.SetSize(spaceDim,dof*width);
+    tBmat.SetSize(spaceDim,width);
+    dshape.SetSize(dof,spaceDim);
+    elvect.SetSize(dof*spaceDim);
+    elvect = 0.0;
+    MFEM_ASSERT(spaceDim == Tr.GetSpaceDim(), "");
+    
+    const IntegrationRule *ir = IntRule;
+    if (ir == NULL)
+      {
+	int intorder = 2 * el.GetOrder();
+	ir = &IntRules.Get(el.GetGeomType(), intorder);
+      }
+    
+    for (int i = 0; i < ir->GetNPoints(); i++)
+      {
+	const IntegrationPoint &ip = ir->IntPoint(i);
+	Tr.SetIntPoint(&ip);
+	el.CalcPhysDShape(Tr, dshape);
+	double M = mu->Eval(Tr, ip);
+	double L = lambda->Eval(Tr, ip);
+	// Fill Emat
+	Emat = 0.;
+	for (int k = 0; k< spaceDim; k++)
+	  {
+	    // Extra-diagonal terms Emat
+	    for (int l = 0; l< spaceDim; l++)
+	      Emat(k,l) = L;
+	    // Diagonal terms Emat
+	    Emat(k,k) = L+2*M;
+	  }
+	// Diagonal terms
+	for (int k = spaceDim; k < width; k++)
+	  Emat(k,k)= M;
+
+	// Fill gtBmat
+	gtBmat = 0.;
+	for (int s = 0; s < dof; s++)
+	  {
+	    int offset = width*s;
+	    // Fill gtBmat that depends on dof 's'.
+	    // gtBmat(:,offset:offset+width) contains tBmat
+	    // for dof 's'
+	    for (int k = 0; k < spaceDim; k++) 
+	      gtBmat(k,offset+k) = dshape(s,k);
+	    gtBmat(0,offset+spaceDim) = dshape(s,1); // N_y 
+	    gtBmat(1,offset+spaceDim) = dshape(s,0); // N_x 
+	    gtBmat(1,offset+4) = dshape(s,2); // N_z
+	    gtBmat(2,offset+4) = dshape(s,1); // N_y
+	    gtBmat(0,offset+5) = dshape(s,2); // N_z
+	    gtBmat(2,offset+5) = dshape(s,0); // N_x
+	  }
+
+	for (int s = 0; s < dof; s++)
+	  {
+	    // Fill tBmat that depends on 's'
+	    int offset_s = width*s;
+	    tBmat.CopyCols(gtBmat,offset_s,offset_s+width-1);
+	    myvect = 0.;
+	    // Do the dense algebra
+	    Emat.Mult(epsM,myvect);
+	    tBmat.Mult(myvect,myres);
+	    // Multiply by the weight
+	    myres *= -1 * ip.weight * Tr.Weight();
+	    // Add the contribution to the RHS
+	    for (int k = 0; k < spaceDim; k++)
+	      elvect(dof*k+s) += myres[k];
+	  }
+      }
+
+}
+};
 
 
 
-class Elasticity2Integrator: public BilinearFormIntegrator
+class ElasticityIntegratorExpensive: public BilinearFormIntegrator
 {
 protected:
   Coefficient *lambda, *mu;
@@ -284,11 +277,19 @@ private:
   DenseMatrix dshape, gtBmat, Emat;
   DenseMatrix BmatR, tBmatL, tBmatR, EBmat, tBEBmat;
 #endif
+  static constexpr const int width=6;
+  static constexpr const int dim=3;
 
 public:
-  Elasticity2Integrator(Coefficient &l, Coefficient &m)
+  ElasticityIntegratorExpensive(Coefficient &l, Coefficient &m)
   {
     lambda = &l; mu = &m;
+    Emat.SetSize(width);
+    tBEBmat.SetSize(dim, dim);
+    tBmatL.SetSize(dim, width);
+    tBmatR.SetSize(dim, width);
+    BmatR.SetSize(width,dim);
+    EBmat.SetSize(width,dim);
   }
 
   /** Given a particular Finite Element
@@ -298,29 +299,16 @@ public:
 				     DenseMatrix &elmat) override 
   {
     int dof = el.GetDof();
-    int dim = el.GetDim();
     double w, L, M;
-    int width;
+    
+    MFEM_VERIFY(dim == Trans.GetSpaceDim() &&  dim == el.GetDim(), "");
      
-    MFEM_VERIFY(dim == Trans.GetSpaceDim(), "");
-     
-    if (dim == 2)
-      width = 3;
-    if (dim == 3)
-      width = 6;
 #ifdef MFEM_THREAD_SAFE
-    DenseMatrix gshape(dof, dim);
-#else
-    Emat.SetSize(width);
-    dshape.SetSize(dof, dim);
-    tBEBmat.SetSize(dim, dim);
-    tBmatL.SetSize(dim, width);
-    tBmatR.SetSize(dim, width);
-    BmatR.SetSize(width,dim);
-    EBmat.SetSize(width,dim);
-    gtBmat.SetSize(dim,dof*width);
+    MFEM_VERIFY(0, "MFEM_THREAD_SAFE not implemented");
 #endif
 
+    dshape.SetSize(dof, dim);
+    gtBmat.SetSize(dim,dof*width);
     elmat.SetSize(dof * dim);
     
     const IntegrationRule *ir = IntRule;
@@ -374,30 +362,26 @@ public:
 	      gtBmat(k,offset+k) = dshape(s,k);
 	    gtBmat(0,offset+dim) = dshape(s,1); // N_y 
 	    gtBmat(1,offset+dim) = dshape(s,0); // N_x 
-	    if (dim == 3) {
-	      gtBmat(1,offset+4) = dshape(s,2); // N_z
-	      gtBmat(2,offset+4) = dshape(s,1); // N_y
-	      gtBmat(0,offset+5) = dshape(s,2); // N_z
-	      gtBmat(2,offset+5) = dshape(s,0); // N_x
-	    }
+	    gtBmat(1,offset+4)   = dshape(s,2); // N_z
+	    gtBmat(2,offset+4)   = dshape(s,1); // N_y
+	    gtBmat(0,offset+5)   = dshape(s,2); // N_z
+	    gtBmat(2,offset+5)   = dshape(s,0); // N_x 
 	  }
 
 	// Perform the main matrix multiplications
-	for (int s = 0; s < dof; s++)
+	for (int t = 0; t < dof; t++)
 	  {
-	    tBmatL.CopyCols(gtBmat,width*s,width*s+width-1);
-	    for (int t = 0; t < dof; t++)
+	    tBmatR.CopyCols(gtBmat,width*t,width*t+width-1);
+	    for (int s = 0; s < dof; s++)
 	      {
-		tBmatR.CopyCols(gtBmat,width*t,width*t+width-1);
+		tBmatL.CopyCols(gtBmat,width*s,width*s+width-1);
 		BmatR.Transpose(tBmatR);
 		Mult(Emat,BmatR,EBmat);
 		Mult(tBmatL,EBmat,tBEBmat);
-		// Multiply by the weight
-		tBEBmat *= w;
 		// Add the contribution to the RHS
-		for (int k = 0; k < dim; k++)
-		  for (int l = 0; l < dim; l++)
-		    elmat(dof*k+s, dof*l+t) += tBEBmat(k,l);
+		for (int l = 0; l < dim; l++)
+		  for (int k = 0; k < dim; k++)
+		    elmat(dof*k+s, dof*l+t) += w*tBEBmat(k,l);
 	      }
 	  }
       }
@@ -541,31 +525,45 @@ int main(int argc, char *argv[])
   
 
    BilinearForm *a = new BilinearForm(fespace);
-   //   a->AddDomainIntegrator(new Elasticity2Integrator(lambda_func,mu_func));
-   a->AddDomainIntegrator(new ElasticityIntegrator(lambda_func,mu_func));
   
    // 7. Set up the right-hand side of the FEM linear system.
    LinearForm rhs(fespace);
-   rhs.AddDomainIntegrator(new DomainLFGrad2Integrator(lambda_func,mu_func,tcase));
+   if (0) 
+     {
+       a->AddDomainIntegrator(new ElasticityIntegrator(lambda_func,mu_func));
+       rhs.AddDomainIntegrator(new DomainLFGrad2Integrator(lambda_func,mu_func,tcase));
+     }
+   else
+     {
+       a->AddDomainIntegrator(new ElasticityIntegratorExpensive(lambda_func,mu_func));
+       rhs.AddDomainIntegrator(new DomainLFGrad2IntegratorExpensive(lambda_func,mu_func,tcase));
+     }
    PROFILER_END(); PROFILER_START(5_solve);
 
+   PROFILER_START(5.1_matrix_assembly);
    a->Assemble();
+   PROFILER_END(); PROFILER_START(5.2_rhs_assembly);
    rhs.Assemble();
 
+   PROFILER_END(); PROFILER_START(5.3_form_linear_system);
    SparseMatrix A;
    Vector B, X;
    a->FormLinearSystem(ess_tdof_list, x, rhs, A, X, B);
-   //   GSSmoother M(A);
+
+   PROFILER_END(); PROFILER_START(5.4_effective_solve);
    CGSolver *pcg;
    pcg = new CGSolver();
    pcg->SetRelTol(1e-13);
    pcg->SetMaxIter(300);
    pcg->SetPrintLevel(1);
    pcg->SetOperator(A);
+   //   GSSmoother M(A);
+   //   pcg->SetPreconditioner(M);
    pcg->Mult(B, X);
 
+   PROFILER_END(); PROFILER_START(5.5_recover_solution);
    a->RecoverFEMSolution(X, rhs, x);
-   
+   PROFILER_END();
    PROFILER_END(); PROFILER_START(6_postprocess);
 
    mfem::VectorFunctionCoefficient sol_coef(dim, solutions[tcase]);
