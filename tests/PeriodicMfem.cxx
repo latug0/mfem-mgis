@@ -505,13 +505,14 @@ int main(int argc, char *argv[])
 
    SparseMatrix A;
    Vector B, X;
-   cout << "Form Linear System, ess_tdof size: " << ess_tdof_list.Size()  << endl;
    a->FormLinearSystem(ess_tdof_list, x, rhs, A, X, B);
-   cout << "Size of linear system: " << A.Height() << endl;
-   // 11. Define a simple symmetric Gauss-Seidel preconditioner and use it to
-   //     solve the system Ax=b with PCG.
-   GSSmoother M(A);
-   PCG(A, M, B, X, 1, 500, 1e-20, 0.0);
+   //   GSSmoother M(A);
+   CGSolver pcg;
+   pcg.SetRelTol(1e-13);
+   pcg.SetMaxIter(300);
+   pcg.SetPrintLevel(1);
+   //   PCG(A, M, B, X, 1, 500, 1e-20, 0.0);
+   pcg.Mult(B, X);
 
    a->RecoverFEMSolution(X, rhs, x);
    

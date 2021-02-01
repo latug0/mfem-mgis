@@ -107,15 +107,15 @@ int main(const int argc, char** const argv) {
     []() ->  std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::GMRESSolver> pgmres(new mfem::GMRESSolver);
         pgmres->iterative_mode = false;
-        pgmres->SetRelTol(1e-8);
-        pgmres->SetAbsTol(1e-8);
+        pgmres->SetRelTol(1e-13);
+        pgmres->SetAbsTol(1e-13);
         pgmres->SetMaxIter(300);
         pgmres->SetPrintLevel(1);
         return pgmres;
     }
     , []() ->  std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver);
-        pcg->SetRelTol(1e-8);
+        pcg->SetRelTol(1e-13);
         pcg->SetMaxIter(300);
         pcg->SetPrintLevel(1);
         return pcg;
