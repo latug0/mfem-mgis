@@ -47,7 +47,7 @@
 #include "mfem/fem/datacollection.hpp"
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/ParFiniteElementDiscretization.hxx"
-#include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
+#include "MFEMMGIS/ParNonLinearEvolutionProblem.hxx"
 #define USE_PROFILER 1
 
 int main(int argc, char** argv) {
@@ -177,7 +177,7 @@ int main(int argc, char** argv) {
 
   std::cout << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   // building the non linear problem
-  mfem_mgis::NonLinearEvolutionProblem problem(pfespace->getFiniteElementDiscretization(),
+  mfem_mgis::ParNonLinearEvolutionProblem problem(pfespace,
 					       mgis::behaviour::Hypothesis::TRIDIMENSIONAL);
   std::cout << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   problem.addBehaviourIntegrator("Mechanics", 1, library, "Elasticity");
