@@ -108,27 +108,12 @@ int main(int argc, char* argv[]) {
       +[](const mfem::Vector&, mfem::Vector& u) { u = mfem_mgis::real{}; }};
   std::shared_ptr<mfem::Solver> (*const solver_list[])() {
     []() ->  std::shared_ptr<mfem::Solver> {
-        std::shared_ptr<mfem::GMRESSolver> pgmres(new mfem::GMRESSolver);
-        pgmres->iterative_mode = false;
-        pgmres->SetRelTol(1e-13);
-        pgmres->SetAbsTol(1e-13);
-        pgmres->SetMaxIter(300);
-        pgmres->SetPrintLevel(1);
-        return pgmres;
-    }
-    , []() ->  std::shared_ptr<mfem::Solver> {
-        std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver);
+        std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver(MPI_COMM_WORLD));
         pcg->SetRelTol(1e-13);
         pcg->SetMaxIter(300);
         pcg->SetPrintLevel(1);
         return pcg;
     }
-#ifdef MFEM_USE_SUITESPARSE
-    , []() ->  std::shared_ptr<mfem::Solver> {
-        std::shared_ptr<mfem::UMFPackSolver> pumf(new mfem::UMFPackSolver);
-        return(pumf);
-    }
-#endif
   };
 
   const char* mesh_file = nullptr;
@@ -298,7 +283,7 @@ int main(int argc, char* argv[]) {
   problem.solve(1);
   // recover the solution as a grid function
   auto& u1 = problem.getUnknownsAtEndOfTheTimeStep();
-  mfem::GridFunction x(&problem.getFiniteElementSpace());
+  mfem_mgis::mGridFunction x(&problem.getFiniteElementSpace());
   x.MakeTRef(&problem.getFiniteElementSpace(), u1, 0);
   x.SetFromTrueVector();
   // comparison to analytical solution
