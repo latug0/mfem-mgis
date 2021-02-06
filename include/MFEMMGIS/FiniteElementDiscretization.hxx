@@ -29,7 +29,7 @@ namespace mfem_mgis {
      * \note this methods creates the finite element space.
      */
     FiniteElementDiscretization(
-        std::shared_ptr<mfem::Mesh>,
+        std::shared_ptr<mMesh>,
         std::shared_ptr<const mfem::FiniteElementCollection>,
         const size_type);
     /*!
@@ -39,17 +39,17 @@ namespace mfem_mgis {
      * \param[in] s: finite element space
      */
     FiniteElementDiscretization(
-        std::shared_ptr<mfem::Mesh>,
+        std::shared_ptr<mMesh>,
         std::shared_ptr<const mfem::FiniteElementCollection>,
-        std::unique_ptr<mfem::FiniteElementSpace>);
+        std::unique_ptr<mFiniteElementSpace>);
     //! \return the mesh
-    mfem::Mesh& getMesh();
+    mMesh& getMesh();
     //! \return the mesh
-    const mfem::Mesh& getMesh() const;
+    const mMesh& getMesh() const;
     //! \return the finite element space
-    mfem::FiniteElementSpace& getFiniteElementSpace();
+    mFiniteElementSpace& getFiniteElementSpace();
     //! \return the finite element space
-    const mfem::FiniteElementSpace& getFiniteElementSpace() const;
+    const mFiniteElementSpace& getFiniteElementSpace() const;
     //! \return the finite element collection
     const mfem::FiniteElementCollection& getFiniteElementCollection() const;
     //! \brief destructor
@@ -57,11 +57,11 @@ namespace mfem_mgis {
 
    private:
     //! \brief mesh
-    std::shared_ptr<mfem::Mesh> mesh;
+    std::shared_ptr<mMesh> mesh;
     //! \brief finite element collection
     std::shared_ptr<const mfem::FiniteElementCollection> fec;
     //! \brief finite element space
-    std::unique_ptr<mfem::FiniteElementSpace> fe_space;
+    std::unique_ptr<mFiniteElementSpace> fe_space;
   };  // end of FiniteElementDiscretization
 
 }  // end of namespace mfem_mgis

@@ -12,7 +12,7 @@ namespace mfem_mgis {
 
   NonLinearEvolutionProblemBase::NonLinearEvolutionProblemBase(
       std::shared_ptr<FiniteElementDiscretization> fed)
-      : mfem::NonlinearForm(&(fed->getFiniteElementSpace())),
+      : mNonlinearForm(&(fed->getFiniteElementSpace())),
         fe_discretization(fed),
         u0(fed->getFiniteElementSpace().GetTrueVSize()),
         u1(fed->getFiniteElementSpace().GetTrueVSize()) {
@@ -41,12 +41,12 @@ namespace mfem_mgis {
     return this->u1;
   }  // end of getUnknownsAtEndOfTheTimeStep
 
-  const mfem::FiniteElementSpace&
+  const mFiniteElementSpace&
   NonLinearEvolutionProblemBase::getFiniteElementSpace() const {
     return this->fe_discretization->getFiniteElementSpace();
   }  // end of NonLinearEvolutionProblemBase::getFiniteElementSpace
 
-  mfem::FiniteElementSpace& NonLinearEvolutionProblemBase::getFiniteElementSpace() {
+  mFiniteElementSpace& NonLinearEvolutionProblemBase::getFiniteElementSpace() {
     return this->fe_discretization->getFiniteElementSpace();
   }  // end of NonLinearEvolutionProblemBase::getFiniteElementSpace
 

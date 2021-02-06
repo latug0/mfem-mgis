@@ -33,7 +33,7 @@ namespace mfem_mgis {
 
   //! alias to the numeric type used
   using real = mgis::real;
-
+ 
 }  // end of namespace mfront_mgis
 
 #endif /* LIB_MFEM_MGIS_CONFIG_HXX */

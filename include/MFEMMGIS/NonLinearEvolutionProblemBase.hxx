@@ -12,6 +12,7 @@
 #include "mfem/linalg/vector.hpp"
 #include "mfem/linalg/solvers.hpp"
 #include "mfem/fem/nonlinearform.hpp"
+#include "mfem/fem/pnonlinearform.hpp"
 #include "MGIS/Behaviour/Hypothesis.hxx"
 #include "MFEMMGIS/Config.hxx"
 #include "MFEMMGIS/MFEMForward.hxx"
@@ -23,7 +24,7 @@ namespace mfem_mgis {
    * \brief class for solving non linear evolution problems
    */
   struct MFEM_MGIS_EXPORT NonLinearEvolutionProblemBase
-      : public mfem::NonlinearForm {
+      : public mNonlinearForm {
     /*!
      * \brief constructor
      * \param[in] fed: finite element discretization
@@ -31,9 +32,9 @@ namespace mfem_mgis {
      */
     NonLinearEvolutionProblemBase(std::shared_ptr<FiniteElementDiscretization>);
     //! \return the finite element space
-    mfem::FiniteElementSpace& getFiniteElementSpace();
+    mFiniteElementSpace& getFiniteElementSpace();
     //! \return the finite element space
-    const mfem::FiniteElementSpace& getFiniteElementSpace() const;
+    const mFiniteElementSpace& getFiniteElementSpace() const;
     //! \return the Newton solver
     mfem::NewtonSolver& getSolver();
     //! \return the unknowns at the beginning of the time step

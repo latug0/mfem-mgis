@@ -28,7 +28,7 @@ namespace mfem_mgis {
    * This class manages an mapping associating a material and its identifier
    */
   struct MFEM_MGIS_EXPORT MultiMaterialNonLinearIntegrator final
-      : public mfem::NonlinearFormIntegrator {
+      : public mNonlinearFormIntegrator {
     //! \brief a simple alias
     using Behaviour = mgis::behaviour::Behaviour;
 

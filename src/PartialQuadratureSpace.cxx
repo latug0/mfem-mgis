@@ -8,7 +8,8 @@
 #include <cmath>
 #include <iterator>
 #include <algorithm>
-#include "mfem/fem/fespace.hpp"
+#include <mfem/fem/fespace.hpp>
+#include <mfem/fem/pfespace.hpp>
 #include "MGIS/Raise.hxx"
 #include "MFEMMGIS/FiniteElementDiscretization.hxx"
 #include "MFEMMGIS/PartialQuadratureSpace.hxx"
