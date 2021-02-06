@@ -177,27 +177,19 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  std::cerr << "Mesh:" << mesh_file << std::endl;
   // creating the finite element workspace
   mfem::Mesh* mesh = new mfem::Mesh(mesh_file, 1, 1);
   if (dim != mesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
     return EXIT_FAILURE;
   }
-  for (int i = 0 ; i < 2 ; i++)
+  for (int i = 0 ; i < 3 ; i++)
     mesh->UniformRefinement();
 
-  MPI_Barrier(MPI_COMM_WORLD);
-  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;
   mfem::ParMesh *pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh);
   delete mesh;
   MPI_Barrier(MPI_COMM_WORLD);
-  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   std::shared_ptr<mfem::ParMesh> spmesh(pmesh);
-  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
-  MPI_Barrier(MPI_COMM_WORLD);
-  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   auto pfespace = std::make_shared<mfem_mgis::FiniteElementDiscretization>(
       spmesh, std::make_shared<mfem::H1_FECollection>(order, dim), 3);
 
@@ -205,13 +197,13 @@ int main(int argc, char* argv[]) {
   // building the non linear problem
   mfem_mgis::NonLinearEvolutionProblem problem(pfespace,
 	       mgis::behaviour::Hypothesis::TRIDIMENSIONAL);
-  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
+
   problem.addBehaviourIntegrator("Mechanics", 1, library, "Elasticity");
   problem.addBehaviourIntegrator("Mechanics", 2, library, "Elasticity");
   // materials
   auto& m1 = problem.getMaterial(1);
   auto& m2 = problem.getMaterial(2);
-  std::cerr << "LINE: " <<__LINE__ << std::endl;;
+
   // setting the material properties
   auto set_properties = [](auto& m, const double l, const double mu) {
     mgis::behaviour::setMaterialProperty(m.s0, "FirstLameCoefficient", l);
@@ -219,7 +211,6 @@ int main(int argc, char* argv[]) {
     mgis::behaviour::setMaterialProperty(m.s1, "FirstLameCoefficient", l);
     mgis::behaviour::setMaterialProperty(m.s1, "ShearModulus", mu);
   };
-  std::cerr << "LINE: " <<__LINE__ << std::endl;;
   set_properties(m1, 100, 75);
   set_properties(m2, 200, 150);
   //
@@ -244,10 +235,54 @@ int main(int argc, char* argv[]) {
   const auto nnodes = problem.getFiniteElementSpace().GetTrueVSize() / dim;
   std::cerr << "Number of nodes: " << nnodes << std::endl;
   mfem::Array<int> ess_tdof_list;
-  ess_tdof_list.SetSize(dim);
-  for (int k = 0; k < dim; k++) {
-    int tgdof = 0 + k * nnodes;
-    ess_tdof_list[k] = tgdof;
+  ess_tdof_list.SetSize(0);
+  {
+    mfem::GridFunction nodes(&problem.getFiniteElementSpace());
+    int found = 0;
+    int size = nnodes;
+    bool reorder_space = true;
+    pmesh->GetNodes(nodes);
+
+     // Traversal of all dofs to detect which one is (0,0,0)
+     for (int i = 0; i < size; ++i) {
+       double coord[dim]; // coordinates of a node
+       double dist = 0.;
+       for (int j = 0; j < dim; ++j) {
+	 if (reorder_space)
+	   coord[j] = (nodes)[j * size + i];
+	 else
+	   coord[j] = (nodes)[i * dim + j];
+	 // because of periodic BC, 0. is also 1.
+	 if (abs(coord[j] - 1.) < 1e-7)
+	   coord[j] = 0.;
+	 dist += coord[j] * coord[j];
+       }
+       // If distance is close to zero, we have our reference point
+       if (dist < 1.e-16) {
+	 //	 cout << myid << "coord: " <<coord[0] << " " << coord[1] << endl;
+	 for (int j = 0; j < dim; ++j) {
+	   int id_unk;
+	   if (reorder_space)
+	     {
+	     //id_unk = (j * size + i);
+	     id_unk = problem.getFiniteElementSpace().GetLocalTDofNumber(j * size + i);
+	     }
+	   else
+	     {
+	       //id_unk = (i * dim + j);
+	       id_unk = problem.getFiniteElementSpace().GetLocalTDofNumber(i * dim + j);
+	     }
+	   if (id_unk >= 0)
+	     {
+	       found = 1;
+	       ess_tdof_list.Append(id_unk);
+	       std::cout << myid << "bloqued unknown: " << id_unk << std::endl;
+	     }
+	 }
+       }
+     }
+     MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+     MFEM_VERIFY(found, "Reference point at (0,0) was not found");
   }
   problem.SetEssentialTrueDofs(ess_tdof_list);
   // solving the problem

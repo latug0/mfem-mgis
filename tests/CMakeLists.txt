@@ -93,7 +93,7 @@ else()
   endfunction(add_periodic_testp)
   
   foreach(ncase RANGE 0 0)
-    foreach(nsolver RANGE 1 1)
+    foreach(nsolver RANGE 0 0)
       foreach(nbprocs RANGE 2 2)
 	add_periodic_testp(${ncase} ${nsolver} ${nbprocs})
       endforeach(nbprocs)
