@@ -7,6 +7,7 @@
 
 #include <utility>
 #include "MGIS/Raise.hxx"
+#include "mfem.hpp"
 #include "MFEMMGIS/BehaviourIntegrator.hxx"
 #include "MFEMMGIS/BehaviourIntegratorFactory.hxx"
 #include "MFEMMGIS/FiniteElementDiscretization.hxx"

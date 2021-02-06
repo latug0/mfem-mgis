@@ -11,6 +11,7 @@
 namespace mfem {
 
   class Vector;
+  class GridFunction;
   class DenseMatrix;
   class Mesh;
   class FiniteElementSpace;
@@ -20,26 +21,27 @@ namespace mfem {
   class IntegrationRule;
   class NonlinearForm;
   class NonlinearFormIntegrator;
-#ifdef MFEM_USE_MPI
+  class ParGridFunction;
   class ParMesh;
   class ParFiniteElementSpace;
   class ParNonlinearForm;
-#endif
 
 }  // end of namespace mfem
 
 
 namespace mfem_mgis {
-#ifdef MFEM_USE_MPI
+  //#ifdef MFEM_USE_MPI
   using mMesh = mfem::ParMesh;
   using mFiniteElementSpace = mfem::ParFiniteElementSpace;
   using mNonlinearForm = mfem::ParNonlinearForm;
   using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
-#else
-  using mMesh = mfem::Mesh;
-  using mFiniteElementSpace = mfem::FiniteElementSpace;
-  using mNonlinearForm = mfem::NonlinearForm;
-  using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
-#endif
+  using mGridFunction = mfem::ParGridFunction;
+//#else
+//  using mMesh = mfem::Mesh;
+//  using mFiniteElementSpace = mfem::FiniteElementSpace;
+//  using mNonlinearForm = mfem::NonlinearForm;
+//  using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
+//  using mGridFunction = mfem::GridFunction;
+//#endif
 }
 #endif /* LIB_MFEM_MGIS_MFEM_FORWARD_HXX */
