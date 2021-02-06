@@ -42,21 +42,20 @@
 #include <memory>
 #include <cstdlib>
 #include <iostream>
-#include "mfem/general/optparser.hpp"
-#include "mfem/linalg/solvers.hpp"
-#include "mfem/fem/datacollection.hpp"
+#include "mfem.hpp"
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/FiniteElementDiscretization.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
-#define USE_PROFILER 1
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
+   // 1. Initialize MPI.
   int num_procs, myid;
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
-  std::cout << "Starting " << myid << std::endl;
-  std::cout << "LINE: " <<__LINE__ << std::endl;;
+
+  std::cerr << "Starting " << myid << std::endl;
+  std::cerr << "LINE: " <<__LINE__ << std::endl;;
   constexpr const auto dim = mfem_mgis::size_type{3};
   constexpr const auto eps = mfem_mgis::real{1e-10};
   constexpr const auto xthr = mfem_mgis::real(1) / 2;
@@ -131,14 +130,17 @@ int main(int argc, char** argv) {
     }
 #endif
   };
+
   const char* mesh_file = nullptr;
   const char* library = nullptr;
-  auto order = 1;
-  auto tcase = 0;
-  auto linearsolver = 1;
+  int order = 1;
+  int tcase = 0;
+  int linearsolver = 1;
   // options treatment
   mfem::OptionsParser args(argc, argv);
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;
 
   args.AddOption(&mesh_file, "-m", "--mesh", "Mesh file to use.");
   args.AddOption(&library, "-l", "--library", "Material library.");
@@ -150,41 +152,66 @@ int main(int argc, char** argv) {
   args.AddOption(&linearsolver, "-ls", "--linearsolver",
                  "identifier of the linear solver: 0 -> GMRES, 1 -> CG, 2 -> UMFPack");
   args.Parse();
-  std::cout << "LINE: " <<__LINE__ << std::endl;;
-  if ((!args.Good()) || (mesh_file == nullptr)) {
-    args.PrintUsage(std::cout);
-    return EXIT_FAILURE;
-  }
-  args.PrintOptions(std::cout);
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;
+  if (!args.Good() || (mesh_file == nullptr))
+    {
+      if (myid == 0)
+	{
+	  args.PrintUsage(std::cout);
+	}
+      MPI_Finalize();
+      return EXIT_FAILURE;
+    }
+  if (myid == 0)
+    {
+      args.PrintOptions(std::cout);
+    }
+  
   if ((tcase < 0) || (tcase > 5)) {
-    std::cerr << "Invalid test case\n";
+    if (myid == 0)
+      {
+	std::cerr << "Invalid test case\n";
+      }
+    MPI_Finalize();
     return EXIT_FAILURE;
   }
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << "Mesh:" << mesh_file << std::endl;
   // creating the finite element workspace
-  auto mesh = std::make_shared<mfem::Mesh>(mesh_file, 1, 1);
+  mfem::Mesh* mesh = new mfem::Mesh(mesh_file, 1, 1);
   if (dim != mesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
     return EXIT_FAILURE;
   }
-  for (int i = 0 ; i < 3 ; i++)
+  for (int i = 0 ; i < 2 ; i++)
     mesh->UniformRefinement();
 
-  std::cout << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
-  auto pmesh = std::make_shared<mfem::ParMesh>(MPI_COMM_WORLD,*mesh.get());
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;
+  mfem::ParMesh *pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh);
+  delete mesh;
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
+  std::shared_ptr<mfem::ParMesh> spmesh(pmesh);
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   auto pfespace = std::make_shared<mfem_mgis::FiniteElementDiscretization>(
-      pmesh, std::make_shared<mfem::H1_FECollection>(order, dim), 3);
+      spmesh, std::make_shared<mfem::H1_FECollection>(order, dim), 3);
 
-  std::cout << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   // building the non linear problem
   mfem_mgis::NonLinearEvolutionProblem problem(pfespace,
 	       mgis::behaviour::Hypothesis::TRIDIMENSIONAL);
-  std::cout << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
+  std::cerr << __FILE__ << " LINE: " <<__LINE__ << std::endl;;
   problem.addBehaviourIntegrator("Mechanics", 1, library, "Elasticity");
   problem.addBehaviourIntegrator("Mechanics", 2, library, "Elasticity");
   // materials
   auto& m1 = problem.getMaterial(1);
   auto& m2 = problem.getMaterial(2);
+  std::cerr << "LINE: " <<__LINE__ << std::endl;;
   // setting the material properties
   auto set_properties = [](auto& m, const double l, const double mu) {
     mgis::behaviour::setMaterialProperty(m.s0, "FirstLameCoefficient", l);
@@ -192,7 +219,7 @@ int main(int argc, char** argv) {
     mgis::behaviour::setMaterialProperty(m.s1, "FirstLameCoefficient", l);
     mgis::behaviour::setMaterialProperty(m.s1, "ShearModulus", mu);
   };
-  std::cout << "LINE: " <<__LINE__ << std::endl;;
+  std::cerr << "LINE: " <<__LINE__ << std::endl;;
   set_properties(m1, 100, 75);
   set_properties(m2, 200, 150);
   //
@@ -215,7 +242,7 @@ int main(int argc, char** argv) {
   // which needs to be on x=xmin or x=xmax axis.
   // ux=0, uy=0, uz=0 on this point.
   const auto nnodes = problem.getFiniteElementSpace().GetTrueVSize() / dim;
-  std::cout << "Number of nodes: " << nnodes << std::endl;
+  std::cerr << "Number of nodes: " << nnodes << std::endl;
   mfem::Array<int> ess_tdof_list;
   ess_tdof_list.SetSize(dim);
   for (int k = 0; k < dim; k++) {
@@ -251,7 +278,7 @@ int main(int argc, char** argv) {
 
   // exporting the results
   mfem::ParaViewDataCollection paraview_dc(
-      "PeriodicTestOutput-" + std::to_string(tcase), mesh.get());
+      "PeriodicTestOutput-" + std::to_string(tcase), pmesh);
   paraview_dc.RegisterField("u", &x);
   paraview_dc.SetCycle(0);
   paraview_dc.SetTime(0.0);

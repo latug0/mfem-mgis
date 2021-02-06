@@ -74,10 +74,10 @@ else()
     PRIVATE MFEMMGIS)
     add_dependencies(check PeriodicTestP)
   
-  function(add_periodic_testp ncase nsolver)
-    set(test "PeriodicTestP-${ncase}-${nsolver}")
+  function(add_periodic_testp ncase nsolver nbprocs)
+    set(test "PeriodicTestP-${ncase}-${nsolver}-${nbprocs}")
     add_test(NAME ${test}
-     COMMAND mpirun -n 1 PeriodicTestP 
+     COMMAND mpirun -n ${nbprocs} PeriodicTestP 
      "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube_2mat_per.mesh"
      "--library" "$<TARGET_FILE:BehaviourTest>"
      "--test-case" "${ncase}"
@@ -94,7 +94,9 @@ else()
   
   foreach(ncase RANGE 0 0)
     foreach(nsolver RANGE 1 1)
-      add_periodic_testp(${ncase} ${nsolver})
+      foreach(nbprocs RANGE 2 2)
+	add_periodic_testp(${ncase} ${nsolver} ${nbprocs})
+      endforeach(nbprocs)
     endforeach(nsolver)
   endforeach(ncase)
 
