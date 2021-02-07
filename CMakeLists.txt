@@ -18,11 +18,6 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
 
 # MFEM
 find_package(MFEM REQUIRED)
-if (MFEM_USE_MPI)
-  message(STATUS "MFEM: using MPI, so mfem_mgis will use MPI")
-  find_package(MPI REQUIRED)
-  set(MPI_CXX_INCLUDE_DIRS "${MPI_CXX_INCLUDE_PATH}" )
-endif(MFEM_USE_MPI)
 
 # MFontGenericInterface
 find_package (MFrontGenericInterface REQUIRED)
@@ -34,6 +29,14 @@ endif(MFEM_USE_OPENMP OR MFEM_USE_LEGACY_OPENMP)
  
 # find mfront for testing purposes
 include(cmake/modules/tfel.cmake)  
+
+# setup for MPI
+if (MFEM_USE_MPI)
+  message(STATUS "MFEM: using MPI, so mfem_mgis will use MPI")
+  find_package(MPI REQUIRED)
+  set(MPI_CXX_INCLUDE_DIRS "${MPI_CXX_INCLUDE_PATH}" )
+  add_definitions("-DLIB_MPI")
+endif(MFEM_USE_MPI)
 
 # documentation
 add_custom_target(doc)

@@ -30,19 +30,19 @@ namespace mfem {
 
 
 namespace mfem_mgis {
-  //#ifdef MFEM_USE_MPI
+#ifdef LIB_MPI
   using mMesh = mfem::ParMesh;
   using mFiniteElementSpace = mfem::ParFiniteElementSpace;
   using mNonlinearForm = mfem::ParNonlinearForm;
   using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
   using mGridFunction = mfem::ParGridFunction;
-//#else
-//  #error "Should not be in sequential mode"
-//  using mMesh = mfem::Mesh;
-//  using mFiniteElementSpace = mfem::FiniteElementSpace;
-//  using mNonlinearForm = mfem::NonlinearForm;
-//  using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
-//  using mGridFunction = mfem::GridFunction;
-//#endif
+#else
+  #error "Should not be in sequential mode"
+  using mMesh = mfem::Mesh;
+  using mFiniteElementSpace = mfem::FiniteElementSpace;
+  using mNonlinearForm = mfem::NonlinearForm;
+  using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
+  using mGridFunction = mfem::GridFunction;
+#endif
 }
 #endif /* LIB_MFEM_MGIS_MFEM_FORWARD_HXX */
