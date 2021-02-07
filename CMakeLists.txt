@@ -34,7 +34,6 @@ include(cmake/modules/tfel.cmake)
 if (MFEM_USE_MPI)
   message(STATUS "MFEM: using MPI, so mfem_mgis will use MPI")
   find_package(MPI REQUIRED)
-  set(MPI_CXX_INCLUDE_DIRS "${MPI_CXX_INCLUDE_PATH}" )
   add_definitions("-DLIB_MPI")
 endif(MFEM_USE_MPI)
 
