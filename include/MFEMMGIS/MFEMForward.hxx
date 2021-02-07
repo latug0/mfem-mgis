@@ -37,6 +37,7 @@ namespace mfem_mgis {
   using mNonlinearFormIntegrator = mfem::NonlinearFormIntegrator;
   using mGridFunction = mfem::ParGridFunction;
 //#else
+//  #error "Should not be in sequential mode"
 //  using mMesh = mfem::Mesh;
 //  using mFiniteElementSpace = mfem::FiniteElementSpace;
 //  using mNonlinearForm = mfem::NonlinearForm;

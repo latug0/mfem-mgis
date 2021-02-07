@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     []() ->  std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver(MPI_COMM_WORLD));
         pcg->SetRelTol(1e-13);
-        pcg->SetMaxIter(300);
+        pcg->SetMaxIter(500);
         pcg->SetPrintLevel(1);
         return pcg;
     }
@@ -291,11 +291,14 @@ int main(int argc, char* argv[]) {
   const auto error = x.ComputeL2Error(sol_coef);
   if (error > eps) {
     std::cerr << "Error is greater than threshold (" << error << " > " << eps << ")\n";
+    MPI_Finalize();
     return EXIT_FAILURE;
   } else {
     std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
   }
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  std::cerr << "After barrier\n";
   // exporting the results
   mfem::ParaViewDataCollection paraview_dc(
       "PeriodicTestOutput-" + std::to_string(tcase), pmesh);
