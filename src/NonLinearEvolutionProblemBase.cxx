@@ -13,6 +13,7 @@ namespace mfem_mgis {
   NonLinearEvolutionProblemBase::NonLinearEvolutionProblemBase(
       std::shared_ptr<FiniteElementDiscretization> fed)
       : mNonlinearForm(&(fed->getFiniteElementSpace())),
+	solver(fed->getFiniteElementSpace().GetComm()),	
         fe_discretization(fed),
         u0(fed->getFiniteElementSpace().GetTrueVSize()),
         u1(fed->getFiniteElementSpace().GetTrueVSize()) {

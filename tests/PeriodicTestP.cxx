@@ -275,6 +275,7 @@ int main(int argc, char* argv[]) {
 
   auto& solver = problem.getSolver();
   solver.iterative_mode = true;
+  solver.iterative_mode = false;
   solver.SetSolver(*lsolver);
   solver.SetPrintLevel(0);
   solver.SetRelTol(1e-12);
