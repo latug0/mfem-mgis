@@ -43,6 +43,7 @@
 #include <cstdlib>
 #include <iostream>
 #include "mfem/general/optparser.hpp"
+#include "mfem/fem/intrules.hpp"
 #include "mfem/linalg/solvers.hpp"
 #include "mfem/fem/datacollection.hpp"
 #include "MFEMMGIS/Material.hxx"
@@ -105,16 +106,16 @@ std::shared_ptr<mfem::Solver> getLinearSolver(const std::size_t i) {
   const generator generators[] = {
       []() -> std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::GMRESSolver> pgmres(new mfem::GMRESSolver);
-        pgmres->iterative_mode = false;
-        pgmres->SetRelTol(1e-12);
-        pgmres->SetAbsTol(1e-12);
+        pgmres->iterative_mode = true;
+        pgmres->SetRelTol(1e-13);
+        pgmres->SetAbsTol(1e-13);
         pgmres->SetMaxIter(300);
         pgmres->SetPrintLevel(1);
         return pgmres;
       },
       []() -> std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver);
-        pcg->SetRelTol(1e-12);
+        pcg->SetRelTol(1e-13);
         pcg->SetMaxIter(300);
         pcg->SetPrintLevel(1);
         return pcg;
@@ -148,7 +149,7 @@ void setBoundaryConditions(mfem_mgis::NonLinearEvolutionProblemBase& problem){
 void setSolverParameters(mfem_mgis::NonLinearEvolutionProblemBase& problem,
                          mfem::Solver& lsolver) {
   auto& solver = problem.getSolver();
-  solver.iterative_mode = true;
+  solver.iterative_mode = false;
   solver.SetSolver(lsolver);
   solver.SetPrintLevel(0);
   solver.SetRelTol(1e-12);
@@ -288,26 +289,183 @@ void executeMFEMMGISTest(const TestParameters& p) {
 struct ElasticityNonLinearIntegrator final
     : public mfem::NonlinearFormIntegrator {
 
-  void AssembleElementVector(const mfem::FiniteElement&,
-                             mfem::ElementTransformation&,
-                             const mfem::Vector&,
-                             mfem::Vector&) override {}
-
-  void AssembleElementGrad(const mfem::FiniteElement&,
-                           mfem::ElementTransformation&,
-                           const mfem::Vector&,
-                           mfem::DenseMatrix&) override {}
-
-  void setMacroscopicGradients(const std::vector<mfem_mgis::real>& g) {
-    this->e = g;
+  ElasticityNonLinearIntegrator(mfem::Coefficient &l,
+				mfem::Coefficient &m,
+				int _tcase) {
+    lambda = &l; mu = &m; tcase = _tcase;
+#ifdef MFEM_THREAD_SAFE
+    MFEM_VERIFY(0,"MPI_THREAD_SAFE should be off");
+#endif
   }
+    /*!
+     * \brief Compute part of the inner forces using a single element.
+     *
+     * this function is called automatically by NonlinearForm::Mult
+     * to perform the assembly of the RHS.
+     */
+    void AssembleElementVector(const mfem::FiniteElement& el,
+			       mfem::ElementTransformation& Tr,
+			       const mfem::Vector& U,
+			       mfem::Vector& elvect) override {
+    int dof = el.GetDof();
+    int spaceDim = Tr.GetSpaceDim();
+    
+    dshape.SetSize(dof, spaceDim);
+    Qvec.SetSize(3);
+    Svec.SetSize(3);
+    elvect.SetSize(dof*spaceDim);
+    elvect = 0.0;
+    
+    const mfem::IntegrationRule *ir =
+      mfem::NonlinearFormIntegrator::IntRule;
+    if (ir == NULL)
+      {
+	int intorder = 2 * el.GetOrder();
+	ir = &mfem::IntRules.Get(el.GetGeomType(), intorder);
+      }
+    
+    for (int i = 0; i < ir->GetNPoints(); i++)
+      {
+	const mfem::IntegrationPoint &ip = ir->IntPoint(i);
+	Tr.SetIntPoint(&ip);
+	el.CalcPhysDShape(Tr, dshape);
 
- private:
-  //! macroscopic gradients
-  std::vector<mfem_mgis::real> e;
+	double M = mu->Eval(Tr, ip);
+	double L = lambda->Eval(Tr, ip);
+	switch(tcase) {
+	case 0:
+	  Svec[0]=0;Qvec[0] = -(L+2*M);
+	  Svec[1]=1;Qvec[1] = -L;
+	  Svec[2]=2;Qvec[2] = -L;
+	  break;
+	case 1:
+	  Svec[0]=0;Qvec[0] = -L;
+	  Svec[1]=1;Qvec[1] = -(L+2*M);
+	  Svec[2]=2;Qvec[2] = -L;
+	  break;
+	case 2:
+	  Svec[0]=0;Qvec[0] = -L;
+	  Svec[1]=1;Qvec[1] = -L;
+	  Svec[2]=2;Qvec[2] = -(L+2*M);
+	  break;
+	case 3:
+	  Svec[0]=1;Qvec[0] = -M;
+	  Svec[1]=0;Qvec[1] = -M;
+	  Svec[2]=2;Qvec[2] = 0;
+	  break;
+	case 4:
+	  Svec[0]=0;Qvec[0] = 0;
+	  Svec[1]=2;Qvec[1] = -M;
+	  Svec[2]=1;Qvec[2] = -M;
+	  break;
+	case 5:
+	  Svec[0]=2;Qvec[0] = -M;
+	  Svec[1]=1;Qvec[1] = 0;
+	  Svec[2]=0;Qvec[2] = -M;
+	  break;
+	}
+	Qvec *= ip.weight * Tr.Weight();
+	for (int k = 0; k < spaceDim; k++) 
+	  {	
+	    for (int s = 0; s < dof; s++)
+	      {
+		elvect(dof*k+s)	+= Qvec[k]*dshape(s,Svec[k]);
+	      }
+	  }
+      }
+    }  // end of AssembleElementVector
+
+    
+    /*!
+     * \brief Compute part of the stiffness matrix using a single element
+     *
+     * this function is called automatically by NonlinearForm::GetGradient
+     * to perform the assembly of Stiffness matrix.
+     */
+    void AssembleElementGrad(const mfem::FiniteElement& el,
+			     mfem::ElementTransformation& Trans,
+			     const mfem::Vector& U,
+			     mfem::DenseMatrix& elmat) override {
+    int dof = el.GetDof();
+    int dim = el.GetDim();
+    double w, L, M;
+     
+    MFEM_ASSERT(dim == Trans.GetSpaceDim(), "");
+     
+    cshape.SetSize(dof);
+    gshape.SetSize(dof, dim);
+    pelmat.SetSize(dof); // size dof*dof
+    divshape.SetSize(dim*dof);
+    elmat.SetSize(dof * dim);
+    
+    const mfem::IntegrationRule *ir =
+      mfem::NonlinearFormIntegrator::IntRule;
+    if (ir == NULL)
+      {
+	int order = 2 * Trans.OrderGrad(&el); // correct order?
+	ir = &mfem::IntRules.Get(el.GetGeomType(), order);
+      }
+     
+    elmat = 0.0;
+
+    for (int nn = 0; nn < ir -> GetNPoints(); nn++)
+      {
+	const mfem::IntegrationPoint &ip = ir->IntPoint(nn);
+	 
+	Trans.SetIntPoint(&ip);
+	// Each row of the result dshape contains
+	// the derivatives of one shape function at the point ip.
+	el.CalcPhysDShape(Trans, gshape);
+	el.CalcPhysShape(Trans, cshape);
+	// Get the transformation Trans for point ip
+	// Get the weights associated to point ip
+	w = ip.weight * Trans.Weight();
+	// Multiply the derivatives by the inverse jacobian matrix
+	// to get the derivatives along x, y and z
+	// gshape contains these derivatives gshape(dof,dim)
+	M = mu->Eval(Trans, ip);
+	L = lambda->Eval(Trans, ip);
+
+	for (int i = 0; i < dim; i++)
+	  for (int j = 0; j < dim; j++)
+	    {
+	      for (int k = 0; k < dof; k++)
+		for (int l = 0; l < dof; l++)
+		  {
+		    elmat(dof*i+k, dof*j+l) += 
+		      (L * w) * gshape(k, i) * gshape(l, j) +
+		      (M * w) * gshape(k, j) * gshape(l, i) ;
+		  }
+	      if (j == i) {
+		for (int k = 0; k < dof; k++)
+		  for (int l = 0; l < dof; l++)
+		    {
+		      double ftmp = 0;
+		      for (int d = 0; d < dim; d++)
+			ftmp += gshape(k, d) * gshape(l, d);
+		      elmat(dof*i+k, dof*j+l) +=
+			(M * w) * ftmp ;
+		    }
+	      }
+	    }
+      }
+    }  // end of AssembleElementGrad
+    
+
+protected:
+  // Coefficients related to materials
+  mfem::Coefficient *lambda, *mu;
+  int tcase;
+private:
+  // Several temporary buffers
+  mfem::Vector shape, Qvec, Svec;
+  mfem::DenseMatrix dshape;
+  mfem::Vector cshape;
+  mfem::DenseMatrix gshape, pelmat;
+  mfem::Vector divshape;
 };
 
-void executeMFEMMTest(const TestParameters& p) {
+void executeMFEMTest(const TestParameters& p) {
   constexpr const auto dim = mfem_mgis::size_type{3};
   // creating the finite element workspace
   auto mesh = std::make_shared<mfem::Mesh>(p.mesh_file, 1, 1);
@@ -319,14 +477,19 @@ void executeMFEMMTest(const TestParameters& p) {
   mfem_mgis::NonLinearEvolutionProblemBase problem(
       std::make_shared<mfem_mgis::FiniteElementDiscretization>(
           mesh, std::make_shared<mfem::H1_FECollection>(p.order, dim), 3));
-  std::vector<mfem_mgis::real> e(6, mfem_mgis::real{});
-  if (p.tcase < 3) {
-    e[p.tcase] = 1;
-  } else {
-    e[p.tcase] = 1 / 2;
-  }
-  //
-  problem.AddDomainIntegrator(new ElasticityNonLinearIntegrator());
+  mfem::Vector lambda(mesh->attributes.Max());
+  lambda = 100.0;
+  if (mesh->attributes.Max() > 1)
+    lambda(1) = lambda(0)*2;
+  mfem::PWConstCoefficient lambda_func(lambda); 
+  // Question: pourquoi piece wise constant ?
+  // lié aux attributs : constant par zone matériau	
+  mfem::Vector mu(mesh->attributes.Max());
+  mu = 75.0;
+  if (mesh->attributes.Max() > 1)
+    mu(1) = mu(0)*2;
+  mfem::PWConstCoefficient mu_func(mu);
+  problem.AddDomainIntegrator(new ElasticityNonLinearIntegrator(lambda_func,mu_func,p.tcase));
   //
   setBoundaryConditions(problem);
   //
@@ -344,6 +507,7 @@ void executeMFEMMTest(const TestParameters& p) {
 
 int main(const int argc, char** const argv) {
   const auto p = parseCommandLineOptions(argc, argv);
-  executeMFEMMGISTest(p);
+  //  executeMFEMMGISTest(p);
+  executeMFEMTest(p);
   return EXIT_SUCCESS;
 }
