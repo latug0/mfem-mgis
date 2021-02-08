@@ -4,17 +4,17 @@ mfront_behaviours_check_library(BehaviourTest
   Mazars
   SaintVenantKirchhoffElasticity)
 
-add_executable(PeriodicTest
+add_executable(PeriodicTestNew
   EXCLUDE_FROM_ALL
-  PeriodicTest.cxx)
-target_link_libraries(PeriodicTest
+  PeriodicTestNew.cxx)
+target_link_libraries(PeriodicTestNew
   PRIVATE MFEMMGIS)
-  add_dependencies(check PeriodicTest)
+  add_dependencies(check PeriodicTestNew)
 
 function(add_periodic_test ncase nsolver)
-  set(test "PeriodicTest-${ncase}-${nsolver}")
+  set(test "PeriodicTestNew-${ncase}-${nsolver}")
   add_test(NAME ${test}
-   COMMAND PeriodicTest 
+   COMMAND PeriodicTestNew 
    "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube_2mat_per.mesh"
    "--library" "$<TARGET_FILE:BehaviourTest>"
    "--test-case" "${ncase}"
