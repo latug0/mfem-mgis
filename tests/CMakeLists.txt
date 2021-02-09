@@ -12,7 +12,7 @@ target_link_libraries(PeriodicTest
   add_dependencies(check PeriodicTest)
 
 function(add_periodic_test ncase nsolver)
-  set(test "PeriodicTest-${ncase}-${nsolver}")
+  set(test "Perf_MGIS-${ncase}-${nsolver}")
   add_test(NAME ${test}
    COMMAND PeriodicTest 
    "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube_2mat_per.mesh"
@@ -43,7 +43,7 @@ target_link_libraries(PeriodicMfem
   add_dependencies(check PeriodicMfem)
 
 function(add_per_mfem_test ncase opt)
-  set(test "PerMfemTest-${ncase}-${opt}")
+  set(test "Perf_Linear_MFEM-${ncase}-${opt}")
   add_test(NAME ${test}
    COMMAND PeriodicMfem
    "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube_2mat_per.mesh"
@@ -53,6 +53,35 @@ endfunction(add_per_mfem_test)
 
 add_per_mfem_test(0 0)
 add_per_mfem_test(0 1)
+
+add_executable(PeriodicTestNL
+  EXCLUDE_FROM_ALL
+  PeriodicTestNL.cxx)
+target_link_libraries(PeriodicTestNL
+  PRIVATE MFEMMGIS)
+  add_dependencies(check PeriodicTestNL)
+
+function(add_per_mfemnl_test ncase algo)
+  set(test "Perf_NL_MFEM_vs_MGIS-${ncase}-${algo}")
+  add_test(NAME ${test}
+   COMMAND PeriodicTestNL
+   "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube_2mat_per.mesh"
+   "--library" "$<TARGET_FILE:BehaviourTest>"
+   "--linearsolver" "1"
+   "--algo" "${algo}"
+   "--test-case" "${ncase}")
+  if((CMAKE_HOST_WIN32) AND (NOT MSYS))
+    set_property(TEST ${test}
+      PROPERTY DEPENDS BehaviourTest
+      PROPERTY ENVIRONMENT "PATH=$<TARGET_FILE_DIR:MFEMMGIS>\;${MGIS_PATH_STRING}")
+  else((CMAKE_HOST_WIN32) AND (NOT MSYS))
+    set_property(TEST ${test}
+      PROPERTY DEPENDS BehaviourTest)
+  endif((CMAKE_HOST_WIN32) AND (NOT MSYS))
+endfunction(add_per_mfemnl_test)
+
+add_per_mfemnl_test(0 0)
+add_per_mfemnl_test(0 1)
 
 add_executable(UnilateralTensileTest
   EXCLUDE_FROM_ALL
