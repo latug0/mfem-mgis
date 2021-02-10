@@ -109,7 +109,7 @@ std::shared_ptr<mfem::Solver> getLinearSolver(const std::size_t i) {
   using generator = std::shared_ptr<mfem::Solver> (*)();
   const generator generators[] = {
       []() -> std::shared_ptr<mfem::Solver> {
-        std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver);
+        std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver(MPI_COMM_WORLD));
         pcg->SetRelTol(1e-13);
         pcg->SetMaxIter(300);
         pcg->SetPrintLevel(1);
@@ -125,16 +125,17 @@ void setBoundaryConditions(mfem_mgis::NonLinearEvolutionProblemBase& problem) {
   // ux=0, uy=0, uz=0 on this point.
   auto *pmesh = problem.getFiniteElementSpace().GetMesh();
   const auto dim = pmesh->Dimension();
-  const auto nnodes = problem.getFiniteElementSpace().GetTrueVSize() / dim;
-  std::cerr << "Number of nodes: " << nnodes << std::endl;
+  int myid;
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid);
   mfem::Array<int> ess_tdof_list;
   ess_tdof_list.SetSize(0);
   {
     mfem::GridFunction nodes(&problem.getFiniteElementSpace());
     int found = 0;
-    int size = nnodes;
     bool reorder_space = true;
     pmesh->GetNodes(nodes);
+    const auto size = nodes.Size()/dim;
+    std::cerr << "Number of nodes: " << size << std::endl;
 
      // Traversal of all dofs to detect which one is (0,0,0)
      for (int i = 0; i < size; ++i) {
@@ -152,7 +153,7 @@ void setBoundaryConditions(mfem_mgis::NonLinearEvolutionProblemBase& problem) {
        }
        // If distance is close to zero, we have our reference point
        if (dist < 1.e-16) {
-	 //	 cout << myid << "coord: " <<coord[0] << " " << coord[1] << endl;
+	 std::cout << myid << ":coord: " <<coord[0] << " " << coord[1] << std::endl;
 	 for (int j = 0; j < dim; ++j) {
 	   int id_unk;
 	   if (reorder_space)
@@ -169,7 +170,7 @@ void setBoundaryConditions(mfem_mgis::NonLinearEvolutionProblemBase& problem) {
 	     {
 	       found = 1;
 	       ess_tdof_list.Append(id_unk);
-	       std::cout <<  "bloqued unknown: " << id_unk << std::endl;
+	       std::cout <<  myid << ":bloqued unknown: " << id_unk << std::endl;
 	     }
 	 }
        }
@@ -183,7 +184,7 @@ void setBoundaryConditions(mfem_mgis::NonLinearEvolutionProblemBase& problem) {
 void setSolverParameters(mfem_mgis::NonLinearEvolutionProblemBase& problem,
                          mfem::Solver& lsolver) {
   auto& solver = problem.getSolver();
-  solver.iterative_mode = false;
+  solver.iterative_mode = true;
   solver.SetSolver(lsolver);
   solver.SetPrintLevel(0);
   solver.SetRelTol(1e-12);
@@ -203,13 +204,17 @@ bool checkSolution(mfem_mgis::NonLinearEvolutionProblemBase& problem,
   // comparison to analytical solution
   mfem::VectorFunctionCoefficient sol_coef(dim, getSolution(i));
   const auto error = x.ComputeL2Error(sol_coef);
+  int myid;
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid);
   if (error > eps) {
-    std::cerr << "Error is greater than threshold (" << error << " > " << eps
+    if (myid == 0)
+      std::cerr << "Error is greater than threshold (" << error << " > " << eps
               << ")\n";
     return false;
-  }
-  std::cerr << "Error is lower than threshold (" << error << " < " << eps
-            << ")\n";
+  } 
+  if (myid == 0)
+    std::cerr << "Error is lower than threshold (" << error << " < " << eps
+	      << ")\n";
   return true;
 }
 
@@ -255,13 +260,20 @@ TestParameters parseCommandLineOptions(const int argc, char** const argv) {
       &p.linearsolver, "-ls", "--linearsolver",
       "identifier of the linear solver: 0 -> GMRES, 1 -> CG, 2 -> UMFPack");
   args.Parse();
+  int myid;
+  MPI_Comm_rank(MPI_COMM_WORLD, &myid);
   if ((!args.Good()) || (p.mesh_file == nullptr) || (p.library == nullptr)) {
-    args.PrintUsage(std::cout);
+    if (myid == 0)
+      args.PrintUsage(std::cout);
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
-  args.PrintOptions(std::cout);
+  if (myid == 0)
+    args.PrintOptions(std::cout);
   if ((p.tcase < 0) || (p.tcase > 5)) {
-    std::cerr << "Invalid test case\n";
+    if (myid == 0)
+      std::cerr << "Invalid test case\n";
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   return p;
@@ -274,6 +286,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
   mfem::Mesh* smesh = new mfem::Mesh(p.mesh_file, 1, 1);
   if (dim != smesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   mfem::ParMesh *pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *smesh);
@@ -283,6 +296,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
 
   if (dim != mesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   //  PROFILER_END(); PROFILER_START(3_refine_mesh);
@@ -337,6 +351,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
   //  PROFILER_END(); PROFILER_START(6_postprocess);
   //
   if (!checkSolution(problem, p.tcase)) {
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   //
@@ -557,6 +572,7 @@ void executeMFEMTest(const TestParameters& p) {
   mfem::Mesh* smesh = new mfem::Mesh(p.mesh_file, 1, 1);
   if (dim != smesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   mfem::ParMesh *pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *smesh);
@@ -566,6 +582,7 @@ void executeMFEMTest(const TestParameters& p) {
 
   if (dim != mesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   //  PROFILER_END(); PROFILER_START(3_refine_mesh);
@@ -601,6 +618,7 @@ void executeMFEMTest(const TestParameters& p) {
   //  PROFILER_END(); PROFILER_START(6_postprocess);
   //
   if (!checkSolution(problem, p.tcase)) {
+    MPI_Finalize();
     std::exit(EXIT_FAILURE);
   }
   //
@@ -609,13 +627,14 @@ void executeMFEMTest(const TestParameters& p) {
 }
 
 int main(int argc, char* argv[]) {
+
+  PROFILER_ENABLE;
    // 1. Initialize MPI.
   int num_procs, myid;
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
-  PROFILER_ENABLE;
   PROFILER_START(0_total);
   PROFILER_START(1_initialize);
   const auto p = parseCommandLineOptions(argc, argv);

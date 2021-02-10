@@ -52,13 +52,13 @@
 #include "MFEMMGIS/libProfiler.h"
 
 int main(int argc, char* argv[]) {
+  PROFILER_ENABLE;
    // 1. Initialize MPI.
   int num_procs, myid;
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
-  PROFILER_ENABLE;
   PROFILER_START(0_total);
   PROFILER_START(1_initialize);
 
@@ -174,6 +174,7 @@ int main(int argc, char* argv[]) {
   mfem::Mesh* mesh = new mfem::Mesh(mesh_file, 1, 1);
   if (dim != mesh->Dimension()) {
     std::cerr << "Invalid mesh dimension \n";
+    MPI_Finalize();
     return EXIT_FAILURE;
   }
   for (int i = 0 ; i < 2 ; i++)
@@ -226,15 +227,15 @@ int main(int argc, char* argv[]) {
   // which needs to be on x=xmin or x=xmax axis.
   // ux=0, uy=0, uz=0 on this point.
   const auto nnodes = problem.getFiniteElementSpace().GetTrueVSize() / dim;
-  std::cerr << "Number of nodes: " << nnodes << std::endl;
   mfem::Array<int> ess_tdof_list;
   ess_tdof_list.SetSize(0);
   {
     mfem::GridFunction nodes(&problem.getFiniteElementSpace());
     int found = 0;
-    int size = nnodes;
     bool reorder_space = true;
     pmesh->GetNodes(nodes);
+    const auto size = nodes.Size()/dim;
+    std::cerr << "Number of nodes: " << size << std::endl;
 
      // Traversal of all dofs to detect which one is (0,0,0)
      for (int i = 0; i < size; ++i) {
@@ -252,7 +253,7 @@ int main(int argc, char* argv[]) {
        }
        // If distance is close to zero, we have our reference point
        if (dist < 1.e-16) {
-	 //	 cout << myid << "coord: " <<coord[0] << " " << coord[1] << endl;
+	 std::cout << myid << ":coord: " <<coord[0] << " " << coord[1] << std::endl;
 	 for (int j = 0; j < dim; ++j) {
 	   int id_unk;
 	   if (reorder_space)
@@ -269,7 +270,7 @@ int main(int argc, char* argv[]) {
 	     {
 	       found = 1;
 	       ess_tdof_list.Append(id_unk);
-	       std::cout << "bloqued unknown: " << id_unk << std::endl;
+	       std::cout << myid << ":bloqued unknown: " << id_unk << std::endl;
 	     }
 	 }
        }
@@ -283,7 +284,6 @@ int main(int argc, char* argv[]) {
 
   auto& solver = problem.getSolver();
   solver.iterative_mode = true;
-  solver.iterative_mode = false;
   solver.SetSolver(*lsolver);
   solver.SetPrintLevel(0);
   solver.SetRelTol(1e-12);
@@ -299,11 +299,13 @@ int main(int argc, char* argv[]) {
   mfem::VectorFunctionCoefficient sol_coef(dim, solutions[tcase]);
   const auto error = x.ComputeL2Error(sol_coef);
   if (error > eps) {
-    std::cerr << "Error is greater than threshold (" << error << " > " << eps << ")\n";
+    if (myid == 0)
+      std::cerr << "Error is greater than threshold (" << error << " > " << eps << ")\n";
     MPI_Finalize();
     return EXIT_FAILURE;
   } else {
-    std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
+    if (myid == 0)
+      std::cerr << "Error is lower than threshold (" << error << " < " << eps << ")\n";
   }
 
   MPI_Barrier(MPI_COMM_WORLD);

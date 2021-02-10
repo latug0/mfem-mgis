@@ -21,6 +21,7 @@
 
 #define USE_PROFILER 1
 #define LIB_PROFILER_IMPLEMENTATION
+#define LIB_PROFILER_PRINTF MpiPrintf
 #include "../general/libProfiler.h"
 
 namespace mfem
