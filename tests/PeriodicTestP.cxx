@@ -47,12 +47,20 @@
 #include "MFEMMGIS/FiniteElementDiscretization.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
 
+#define USE_PROFILER 1
+#define LIB_PROFILER_PRINTF MpiPrintf
+#include "MFEMMGIS/libProfiler.h"
+
 int main(int argc, char* argv[]) {
    // 1. Initialize MPI.
   int num_procs, myid;
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+
+  PROFILER_ENABLE;
+  PROFILER_START(0_total);
+  PROFILER_START(1_initialize);
 
   std::cerr << "Starting " << myid << std::endl;
   std::cerr << "LINE: " <<__LINE__ << std::endl;;
@@ -168,7 +176,7 @@ int main(int argc, char* argv[]) {
     std::cerr << "Invalid mesh dimension \n";
     return EXIT_FAILURE;
   }
-  for (int i = 0 ; i < 3 ; i++)
+  for (int i = 0 ; i < 2 ; i++)
     mesh->UniformRefinement();
 
   mfem::ParMesh *pmesh = new mfem::ParMesh(MPI_COMM_WORLD, *mesh);
@@ -261,7 +269,7 @@ int main(int argc, char* argv[]) {
 	     {
 	       found = 1;
 	       ess_tdof_list.Append(id_unk);
-	       std::cout << myid << "bloqued unknown: " << id_unk << std::endl;
+	       std::cout << "bloqued unknown: " << id_unk << std::endl;
 	     }
 	 }
        }
@@ -308,6 +316,9 @@ int main(int argc, char* argv[]) {
   paraview_dc.SetTime(0.0);
   paraview_dc.Save();
 
+  PROFILER_END(); 
+  LogProfiler();
+  PROFILER_DISABLE;
   MPI_Finalize();
   return EXIT_SUCCESS;
 }

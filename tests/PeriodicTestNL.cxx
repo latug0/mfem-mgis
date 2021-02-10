@@ -109,28 +109,12 @@ std::shared_ptr<mfem::Solver> getLinearSolver(const std::size_t i) {
   using generator = std::shared_ptr<mfem::Solver> (*)();
   const generator generators[] = {
       []() -> std::shared_ptr<mfem::Solver> {
-        std::shared_ptr<mfem::GMRESSolver> pgmres(new mfem::GMRESSolver);
-        pgmres->iterative_mode = false;
-        pgmres->SetRelTol(1e-13);
-        pgmres->SetAbsTol(1e-13);
-        pgmres->SetMaxIter(300);
-        pgmres->SetPrintLevel(1);
-        return pgmres;
-      },
-      []() -> std::shared_ptr<mfem::Solver> {
         std::shared_ptr<mfem::CGSolver> pcg(new mfem::CGSolver);
         pcg->SetRelTol(1e-13);
         pcg->SetMaxIter(300);
         pcg->SetPrintLevel(1);
         return pcg;
       }
-#ifdef MFEM_USE_SUITESPARSE
-      ,
-      []() -> std::shared_ptr<mfem::Solver> {
-        std::shared_ptr<mfem::UMFPackSolver> pumf(new mfem::UMFPackSolver);
-        return (pumf);
-      }
-#endif
   };
   return (generators[i])();
 }
@@ -139,13 +123,59 @@ void setBoundaryConditions(mfem_mgis::NonLinearEvolutionProblemBase& problem) {
   // Impose no displacement on the first node
   // which needs to be on x=xmin or x=xmax axis.
   // ux=0, uy=0, uz=0 on this point.
-  const auto dim = problem.getFiniteElementSpace().GetMesh()->Dimension();
+  auto *pmesh = problem.getFiniteElementSpace().GetMesh();
+  const auto dim = pmesh->Dimension();
   const auto nnodes = problem.getFiniteElementSpace().GetTrueVSize() / dim;
+  std::cerr << "Number of nodes: " << nnodes << std::endl;
   mfem::Array<int> ess_tdof_list;
-  ess_tdof_list.SetSize(dim);
-  for (int k = 0; k < dim; k++) {
-    int tgdof = 0 + k * nnodes;
-    ess_tdof_list[k] = tgdof;
+  ess_tdof_list.SetSize(0);
+  {
+    mfem::GridFunction nodes(&problem.getFiniteElementSpace());
+    int found = 0;
+    int size = nnodes;
+    bool reorder_space = true;
+    pmesh->GetNodes(nodes);
+
+     // Traversal of all dofs to detect which one is (0,0,0)
+     for (int i = 0; i < size; ++i) {
+       double coord[dim]; // coordinates of a node
+       double dist = 0.;
+       for (int j = 0; j < dim; ++j) {
+	 if (reorder_space)
+	   coord[j] = (nodes)[j * size + i];
+	 else
+	   coord[j] = (nodes)[i * dim + j];
+	 // because of periodic BC, 0. is also 1.
+	 if (abs(coord[j] - 1.) < 1e-7)
+	   coord[j] = 0.;
+	 dist += coord[j] * coord[j];
+       }
+       // If distance is close to zero, we have our reference point
+       if (dist < 1.e-16) {
+	 //	 cout << myid << "coord: " <<coord[0] << " " << coord[1] << endl;
+	 for (int j = 0; j < dim; ++j) {
+	   int id_unk;
+	   if (reorder_space)
+	     {
+	     //id_unk = (j * size + i);
+	     id_unk = problem.getFiniteElementSpace().GetLocalTDofNumber(j * size + i);
+	     }
+	   else
+	     {
+	       //id_unk = (i * dim + j);
+	       id_unk = problem.getFiniteElementSpace().GetLocalTDofNumber(i * dim + j);
+	     }
+	   if (id_unk >= 0)
+	     {
+	       found = 1;
+	       ess_tdof_list.Append(id_unk);
+	       std::cout <<  "bloqued unknown: " << id_unk << std::endl;
+	     }
+	 }
+       }
+     }
+     MPI_Allreduce(MPI_IN_PLACE, &found, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+     MFEM_VERIFY(found, "Reference point at (0,0) was not found");
   }
   problem.SetEssentialTrueDofs(ess_tdof_list);
 }
