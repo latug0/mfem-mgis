@@ -6,7 +6,6 @@
  */
 
 #include "MGIS/Raise.hxx"
-#include "MFEMMGIS/ResidualOperator.hxx"
 #include "MFEMMGIS/MultiMaterialNonLinearIntegrator.hxx"
 #include "MFEMMGIS/NonLinearEvolutionProblem.hxx"
 #define USE_PROFILER 1
@@ -28,6 +27,10 @@ namespace mfem_mgis {
     }
     this->AddDomainIntegrator(this->mgis_integrator);
   }  // end of NonLinearEvolutionProblem
+
+  void NonLinearEvolutionProblem::setup() {
+    this->mgis_integrator->setup();
+  }  // end of setup
 
   void NonLinearEvolutionProblem::revert() {
     NonLinearEvolutionProblemBase::revert();

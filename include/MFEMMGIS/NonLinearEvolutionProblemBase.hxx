@@ -19,9 +19,6 @@
 
 namespace mfem_mgis {
 
-  // forward declaration
-  struct ResidualOperator;
-
   /*!
    * \brief class for solving non linear evolution problems
    */
@@ -55,7 +52,6 @@ namespace mfem_mgis {
      * \brief update the state to the end of the time step.
      */
     virtual void update();
-
     /*!
      * \brief solve the non linear problem over the given time step
      * \param[in] dt: time increment
@@ -71,10 +67,12 @@ namespace mfem_mgis {
      * \param[in] dt: time increment
      */
     virtual void setTimeIncrement(const real);
+    /*!
+     * \brief method called before each resolution
+     */
+    virtual void setup();
     //! \brief underlying finite element discretization
     const std::shared_ptr<FiniteElementDiscretization> fe_discretization;
-    //! \brief residual
-    std::unique_ptr<ResidualOperator> residual;
     //! \brief newton solver
     mfem::NewtonSolver solver;
     //! \brief unknowns at the beginning of the time step

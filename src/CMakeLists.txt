@@ -8,7 +8,6 @@ mfem_mgis_library(MFEMMGIS
   BehaviourIntegratorBase.cxx
   BehaviourIntegratorFactory.cxx
   MultiMaterialNonLinearIntegrator.cxx
-  ResidualOperator.cxx
   NonLinearEvolutionProblemBase.cxx
   NonLinearEvolutionProblem.cxx
   IsotropicTridimensionalStandardFiniteStrainMechanicsBehaviourIntegrator.cxx
@@ -29,3 +28,4 @@ if(OpenMP_FOUND)
   target_link_libraries(MFEMMGIS
     PUBLIC OpenMP::OpenMP_CXX)
 endif(OpenMP_FOUND)
+
