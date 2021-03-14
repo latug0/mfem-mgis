@@ -125,7 +125,7 @@ std::shared_ptr<mfem::Solver> getLinearSolver(const std::size_t i) {
         pgmres->iterative_mode = false;
         pgmres->SetRelTol(1e-9);
         pgmres->SetAbsTol(1e-9);
-        pgmres->SetMaxIter(800);
+        pgmres->SetMaxIter(1200);
         pgmres->SetPrintLevel(1);
         return pgmres;
       },
@@ -137,7 +137,7 @@ std::shared_ptr<mfem::Solver> getLinearSolver(const std::size_t i) {
           pcg = std::make_shared<mfem::CGSolver>();
         pcg->SetRelTol(1e-9);
         pcg->SetAbsTol(1e-9);
-        pcg->SetMaxIter(800);
+        pcg->SetMaxIter(1200);
         pcg->SetPrintLevel(1);
         return pcg;
       }
@@ -235,7 +235,7 @@ void setSolverParameters(
 template <bool parallel>
 bool checkSolution(mfem_mgis::NonLinearEvolutionProblemBase<parallel>& problem,
                    const std::size_t i) {
-  constexpr const auto eps = mfem_mgis::real{1e-10};
+  constexpr const auto eps = mfem_mgis::real{1e-9};
   const auto dim = problem.getFiniteElementSpace().GetMesh()->Dimension();
   // recover the solution as a grid function
   auto& u1 = problem.getUnknownsAtEndOfTheTimeStep();

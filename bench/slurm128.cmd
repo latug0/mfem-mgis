@@ -1,11 +1,11 @@
 #!/bin/sh
 #SBATCH -J mfem
 #SBATCH -p skylake
-#SBATCH -N 2
+#SBATCH -N 4
 #SBATCH --ntasks-per-node=32
 #SBATCH --ntasks-per-core=1
 #SBATCH -A b171
-#SBATCH -t 0:25:00
+#SBATCH -t 0:05:00
 #SBATCH -o period.%j.%a.out
 #SBATCH -e period.%j.%a.err
 #SBATCH --exclusive
