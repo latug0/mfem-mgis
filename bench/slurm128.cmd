@@ -20,9 +20,9 @@ MFEMMGIS_DIR=${HOME}/mfem-mgis
 cd ${MFEMMGIS_DIR}/build/tests
 MPIOPT="-report-bindings  --map-by core -bind-to core"
 COMMONOPT="--mesh ${MFEMMGIS_DIR}/tests/cube_2mat_per.mesh --library ./libBehaviourTest.so --test-case 0 --linearsolver 1 --refine 4"
+time mpirun ${MPIOPT} ptest_full_periodic  --mesh ${MFEMMGIS_DIR}/tests/cube_2mat_per.mesh 2>&1
 time mpirun ${MPIOPT} PeriodicTestP  ${COMMONOPT} 2>&1
 time mpirun ${MPIOPT} PeriodicTestNL ${COMMONOPT} --algo 0 2>&1
-time mpirun ${MPIOPT} PeriodicTestP  ${COMMONOPT} 2>&1
 time mpirun ${MPIOPT} PeriodicTestNL ${COMMONOPT} --algo 1 2>&1
 
 

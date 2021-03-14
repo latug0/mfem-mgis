@@ -1,6 +1,6 @@
 #!/bin/bash
 set -v
-grep 5_ period.5467445.4294967294.out
-grep 5_ period.5467453.4294967294.out
-grep 5_ period.5467458.4294967294.out
-grep 5_ period.5467480.4294967294.out
+grep "^|"  period.5469909.4294967294.out
+grep "^|"  period.5470303.4294967294.out
+grep "^|"  period.5469907.4294967294.out
+grep "^|"  period.5469906.4294967294.out
