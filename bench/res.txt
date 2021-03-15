@@ -1,3 +1,6 @@
+Nb global unknowns: 14064774
+-----------------
+grep "^|"  period.5469909.4294967294.out
 | Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section
 |  178604.7471 |  178604.7471 |  178604.7471 |  178604.7471 |     1  | 0_total
 |       0.0640 |       0.0640 |       0.0640 |       0.0640 |     1  |   1_initialize
@@ -52,6 +55,7 @@
 |  119758.6318 |  119758.6318 |  119758.6318 |  119758.6318 |     1  |     5A.5_NewtonIterFirstMult
 |     591.5591 |     591.5591 |     591.5591 |     591.5591 |     1  |     5A.6_NewtonIterSecondMult
 |    5435.5449 |    5435.5449 |    5435.5449 |    5435.5449 |     1  |   6_postprocess
+grep "^|"  period.5470303.4294967294.out
 | Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section
 |   79226.1831 |   79226.1831 |   79226.1831 |   79226.1831 |     1  | 0_total
 |       0.0671 |       0.0671 |       0.0671 |       0.0671 |     1  |   1_initialize
@@ -106,6 +110,7 @@
 |   59563.4148 |   59563.4148 |   59563.4148 |   59563.4148 |     1  |     5A.5_NewtonIterFirstMult
 |     286.2151 |     286.2151 |     286.2151 |     286.2151 |     1  |     5A.6_NewtonIterSecondMult
 |    3324.0339 |    3324.0339 |    3324.0339 |    3324.0339 |     1  |   6_postprocess
+grep "^|"  period.5469907.4294967294.out
 | Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section
 |   41951.7212 |   41951.7212 |   41951.7212 |   41951.7212 |     1  | 0_total
 |       0.0649 |       0.0649 |       0.0649 |       0.0649 |     1  |   1_initialize
@@ -160,6 +165,7 @@
 |   30319.8530 |   30319.8530 |   30319.8530 |   30319.8530 |     1  |     5A.5_NewtonIterFirstMult
 |     139.4629 |     139.4629 |     139.4629 |     139.4629 |     1  |     5A.6_NewtonIterSecondMult
 |    1908.9380 |    1908.9380 |    1908.9380 |    1908.9380 |     1  |   6_postprocess
+grep "^|"  period.5469906.4294967294.out
 | Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section
 |   22765.6880 |   22765.6880 |   22765.6880 |   22765.6880 |     1  | 0_total
 |       0.0681 |       0.0681 |       0.0681 |       0.0681 |     1  |   1_initialize

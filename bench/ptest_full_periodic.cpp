@@ -265,11 +265,10 @@ int main(int argc, char *argv[])
        fespace = new ParFiniteElementSpace(pmesh, fec, dim, Ordering::byVDIM);
      }
    
-   if (myid == 0)
-   {
-     cout << "Number of finite element local unknowns: " << fespace->GetTrueVSize() 
-        << endl << "Assembling: " << flush;
-   }
+   cout << myid << ": Number of finite element local unknowns: " << fespace->GetTrueVSize() << endl;
+   auto gsize = fespace->GlobalVSize();
+   if (myid == 0) 
+     cout << "Nb global unknowns: "<< gsize << endl;
 
    //    Define the solution vector x as a finite element grid function
    //    corresponding to fespace. Initialize x with initial guess of zero,
@@ -372,7 +371,7 @@ int main(int argc, char *argv[])
    pcg->SetRelTol(1e-9);
    pcg->SetAbsTol(1e-9);
    pcg->SetMaxIter(1200);
-   pcg->SetPrintLevel(2);
+   pcg->SetPrintLevel(5);
    pcg->SetOperator(*A);
    pcg->Mult(B, X);
 
