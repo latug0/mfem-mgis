@@ -371,7 +371,7 @@ int main(int argc, char *argv[])
    pcg->SetRelTol(1e-9);
    pcg->SetAbsTol(1e-9);
    pcg->SetMaxIter(1200);
-   pcg->SetPrintLevel(5);
+   pcg->SetPrintLevel(2);
    pcg->SetOperator(*A);
    pcg->Mult(B, X);
 
