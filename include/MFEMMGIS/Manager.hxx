@@ -18,21 +18,29 @@
 #warning "NO MPI activated"
 #define MPI_COMM_WORLD 0
 #define MPI_SUCCESS 0
-#define MPI_Finalize() 
 #define MPI_Comm_rank(args...) (0)
 #define MPI_Comm_size(args...) (1)
-#define MPI_Init(args...) (MPI_SUCCESS)
-#define MPI_Finalized(flag) (*(flag)=0, MPI_SUCCESS)
-#define MPI_Initialized(flag) (*(flag)=1, MPI_SUCCESS)
 #endif /* DO_USE_MPI */
 
 namespace mfem_mgis {
   namespace Manager {
+
+    template <bool parallel>
     void Init();
+
+    template <bool parallel>
     void Init(int *argc, char ***argv);
+
+    template <bool parallel>
     void Broadcast(int *argc, char ***argv);
+
+    template <bool parallel>
     bool Initialized();
+
+    template <bool parallel>
     bool Finalized();
+
+    template <bool parallel>
     void Finalize();
   }
 } // namespace mfem_mgis

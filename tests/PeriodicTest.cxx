@@ -213,7 +213,7 @@ template <bool parallel>
 TestParameters parseCommandLineOptions(int &argc, char* argv[]){
   TestParameters p;
   // options treatment
-  mfem_mgis::Manager::Init(&argc, &argv);
+  mfem_mgis::Manager::Init<parallel>(&argc, &argv);
   mfem::OptionsParser args(argc, argv);
   args.AddOption(&p.mesh_file, "-m", "--mesh", "Mesh file to use.");
   args.AddOption(&p.library, "-l", "--library", "Material library.");
@@ -239,7 +239,7 @@ TestParameters parseCommandLineOptions(int &argc, char* argv[]){
 
 template <bool parallel>
 void exit_on_failure () {
-  mfem_mgis::Manager::Finalize();
+  mfem_mgis::Manager::Finalize<parallel>();
   std::exit(EXIT_FAILURE);
 }
 
