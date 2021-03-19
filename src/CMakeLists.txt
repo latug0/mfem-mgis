@@ -38,3 +38,6 @@ if(OpenMP_FOUND)
     PUBLIC OpenMP::OpenMP_CXX)
 endif(OpenMP_FOUND)
 
+if (MFEM_USE_MPI)
+  add_definitions("-DDO_USE_MPI")
+endif()

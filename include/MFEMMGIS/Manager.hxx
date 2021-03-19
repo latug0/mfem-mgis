@@ -15,11 +15,11 @@
 #include <mpi.h>
 #warning "MPI activated"
 #else
-#warning "NO MPI activated"
-#define MPI_COMM_WORLD 0
-#define MPI_SUCCESS 0
-#define MPI_Comm_rank(args...) (0)
-#define MPI_Comm_size(args...) (1)
+//#warning "NO MPI activated"
+//#define MPI_COMM_WORLD 0
+//#define MPI_SUCCESS 0
+//#define MPI_Comm_rank(args...) (0)
+//#define MPI_Comm_size(args...) (1)
 #endif /* DO_USE_MPI */
 
 namespace mfem_mgis {
