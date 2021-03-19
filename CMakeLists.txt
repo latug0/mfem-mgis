@@ -27,6 +27,7 @@ endif(NOT TARGET mfem)
 if (MFEM_USE_MPI)
   message(STATUS "MFEM: using MPI, so mfem_mgis will use MPI")
   find_package(MPI REQUIRED)
+  add_definitions("-DDO_USE_MPI")
 endif(MFEM_USE_MPI)
 
 # MFontGenericInterface

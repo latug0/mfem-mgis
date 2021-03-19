@@ -48,13 +48,8 @@
 #include "MFEMMGIS/MFEMForward.hxx"
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/PeriodicNonLinearEvolutionProblem.hxx"
+#include "MFEMMGIS/Manager.hxx"
 
-#ifndef MFEM_USE_MPI
-#define MPI_COMM_WORLD 0
-#define MPI_Finalize(args...) {}
-#define MPI_Allreduce(args...) {}
-#define MPI_Init(args...) {}
-#endif
 
 void (*getSolution(const std::size_t i))(const mfem::Vector&, mfem::Vector&) {
   constexpr const auto xthr = mfem_mgis::real(1) / 2;
@@ -218,7 +213,7 @@ template <bool parallel>
 TestParameters parseCommandLineOptions(int &argc, char* argv[]){
   TestParameters p;
   // options treatment
-  if constexpr (parallel) MPI_Init(&argc, &argv);
+  mfem_mgis::Manager::Init(&argc, &argv);
   mfem::OptionsParser args(argc, argv);
   args.AddOption(&p.mesh_file, "-m", "--mesh", "Mesh file to use.");
   args.AddOption(&p.library, "-l", "--library", "Material library.");
@@ -244,7 +239,7 @@ TestParameters parseCommandLineOptions(int &argc, char* argv[]){
 
 template <bool parallel>
 void exit_on_failure () {
-  if constexpr (parallel) MPI_Finalize();
+  mfem_mgis::Manager::Finalize();
   std::exit(EXIT_FAILURE);
 }
 
