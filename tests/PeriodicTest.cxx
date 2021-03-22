@@ -226,21 +226,15 @@ TestParameters parseCommandLineOptions(int &argc, char* argv[]){
   args.AddOption(&p.linearsolver, "-ls", "--linearsolver",
                  "identifier of the linear solver: 0 -> GMRES, 1 -> CG, 2 -> UMFPack");
   args.Parse();
-  if ((!args.Good()) || (p.mesh_file == nullptr)) {
+  if ((!args.Good()) || (p.mesh_file == nullptr) || (p.library == nullptr)) {
     args.PrintUsage(std::cout);
-    std::exit(EXIT_FAILURE);
+    p.manager->FinalizeExit("Input arguments were wrong");
   }
   args.PrintOptions(std::cout);
   if ((p.tcase < 0) || (p.tcase > 5)) {
-    std::cerr << "Invalid test case\n";
-    std::exit(EXIT_FAILURE);
+    p.manager->FinalizeExit("Invalid test case");
   }
   return p;
-}
-
-void exit_on_failure (const mfem_mgis::ManagerBase *manager) {
-  manager->Finalize();
-  std::exit(EXIT_FAILURE);
 }
 
 template <bool parallel>
@@ -252,8 +246,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
   if constexpr (parallel) {
       auto smesh = std::make_shared<mfem::Mesh>(p.mesh_file, 1, 1);
       if (dim != smesh->Dimension()) {
-        std::cerr << "Invalid mesh dimension \n";
-        exit_on_failure(p.manager);
+        p.manager->FinalizeExit("Invalid mesh dimension");
       }
       for (int i = 0 ; i < 2 ; i++)
         smesh->UniformRefinement();
@@ -261,8 +254,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
     } else {
       mesh = std::make_shared<mfem::Mesh>(p.mesh_file, 1, 1);
       if (dim != mesh->Dimension()) {
-        std::cerr << "Invalid mesh dimension \n";
-        exit_on_failure(p.manager);
+        p.manager->FinalizeExit("Invalid mesh dimension");
       }
   }
   // building the non linear problem
@@ -305,7 +297,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
   problem.solve(0, 1);
   //
   if (!checkSolution(problem, p.tcase)) {
-    exit_on_failure(p.manager);
+    p.manager->FinalizeExit("Solution is WRONG");
   }
   //
   exportResults(problem, p.tcase);
@@ -339,8 +331,7 @@ void executeMFEMMTest(const TestParameters& p) {
   // creating the finite element workspace
   auto mesh = std::make_shared<mfem::Mesh>(p.mesh_file, 1, 1);
   if (dim != mesh->Dimension()) {
-    std::cerr << "Invalid mesh dimension \n";
-    std::exit(EXIT_FAILURE);
+    p.manager->FinalizeExit("Invalid mesh dimension\n");
   }
   // building the non linear problem
   mfem_mgis::NonLinearEvolutionProblemBase<false> problem(
@@ -363,10 +354,11 @@ void executeMFEMMTest(const TestParameters& p) {
   problem.solve(0, 1);
   //
   if (!checkSolution(problem, p.tcase)) {
-    std::exit(EXIT_FAILURE);
+    p.manager->FinalizeExit("Solution is WRONG");
   }
   //
   exportResults(problem, p.tcase);
+  p.manager->Finalize();
 }
 
 int main(int argc, char* argv[]) {

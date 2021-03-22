@@ -9,7 +9,6 @@
  */
 #include <exception>
 #include <utility>
-#include <iostream>
 #include "MFEMMGIS/Config.hxx"
 #include "MFEMMGIS/Manager.hxx"
 
@@ -65,6 +64,20 @@ namespace mfem_mgis {
   }
 
   template<>
+  void Manager<true>::FinalizeExit (const std::string &message, const int &errcode) const {
+    std::cerr << "\nEXITING: " << message << std::endl;
+    Finalize();
+    std::exit(errcode);
+  }
+
+  template<>
+  void Manager<true>::Abort (const std::string &message, const int &errcode) const {
+    std::cerr << "\nABORT: " << message << std::endl;
+    MPI_Abort(MPI_COMM_WORLD, errcode);
+  }
+
+
+  template<>
   Manager<true>::~Manager() = default;
   
 
@@ -99,6 +112,19 @@ namespace mfem_mgis {
     
   template<>
   void Manager<false>::Finalize() const { }
+
+  template<>
+  void Manager<false>::FinalizeExit (const std::string &message, const int &errcode) const {
+    std::cerr << "\nEXITING: " << message << std::endl;
+    Finalize();
+    std::exit(errcode);
+  }
+
+  template<>
+  void Manager<false>::Abort (const std::string &message, const int &errcode) const {
+    std::cerr << "\nABORT: " << message << std::endl;
+    std::exit(errcode);
+  }
 
   template<>
   Manager<false>::~Manager() = default;

@@ -19,6 +19,7 @@
 //#define MPI_Comm_rank(args...) (0)
 //#define MPI_Comm_size(args...) (1)
 #endif /* MFEM_USE_MPI */
+#include <iostream>
 
 namespace mfem_mgis {
 
@@ -27,6 +28,8 @@ namespace mfem_mgis {
     virtual void Init() const = 0;
     virtual void Init(int *argc, char ***argv) const = 0;
     virtual void Finalize() const = 0;
+    virtual void FinalizeExit (const std::string &message={}, const int &errcode=EXIT_FAILURE) const = 0;
+    virtual void Abort (const std::string &message={}, const int &errcode=EXIT_FAILURE) const = 0;
     virtual ~ManagerBase() = default;
     static bool isparallel;
   };
@@ -39,7 +42,9 @@ namespace mfem_mgis {
     void Init() const override;
     void Init(int *argc, char ***argv) const override;
     void Finalize() const override;
-    void Broadcast(int *argc, char ***argv);
+    void FinalizeExit (const std::string &message={}, const int &errcode=EXIT_FAILURE) const override;
+    void Abort (const std::string &message={}, const int &errcode=EXIT_FAILURE) const override;
+    //TODO: void Broadcast(int *argc, char ***argv);
     ~Manager() = default;
 
     static constexpr bool isparallel = parallel;
