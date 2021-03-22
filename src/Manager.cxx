@@ -84,13 +84,15 @@ namespace mfem_mgis {
   }
   
   template<>
-  void Manager<false>::Init(int *argc, char ***argv) const {}
+  void Manager<false>::Init(int *argc, char ***argv) const {
+    (void)argc;
+    (void)argv;
+  }
 
   template<>
   Manager<false>::Manager(int *argc, char ***argv) {
     Init(argc, argv);
   }
-  
   
   template<>
   void Manager<false>::Init() const {}
@@ -100,6 +102,5 @@ namespace mfem_mgis {
 
   template<>
   Manager<false>::~Manager() = default;
-
  
 } // namespace mfem_mgis

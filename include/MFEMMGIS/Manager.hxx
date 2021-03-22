@@ -13,18 +13,17 @@
 
 #ifdef MFEM_USE_MPI
 #include <mpi.h>
-#warning "MPI activated"
 #else
-#warning "NO MPI activated"
 #define MPI_COMM_WORLD 0
 //#define MPI_SUCCESS 0
 //#define MPI_Comm_rank(args...) (0)
 //#define MPI_Comm_size(args...) (1)
-#endif /* DO_USE_MPI */
+#endif /* MFEM_USE_MPI */
 
 namespace mfem_mgis {
 
-  struct ManagerBase {
+  class ManagerBase {
+  public :
     virtual void Init() const = 0;
     virtual void Init(int *argc, char ***argv) const = 0;
     virtual void Finalize() const = 0;
@@ -33,19 +32,21 @@ namespace mfem_mgis {
   };
   
   template <bool parallel>
-  struct Manager : public ManagerBase {
-
+  class Manager : public ManagerBase {
+  public:
     Manager();
     Manager(int *argc, char ***argv);
     void Init() const override;
     void Init(int *argc, char ***argv) const override;
     void Finalize() const override;
     void Broadcast(int *argc, char ***argv);
+    ~Manager() = default;
+
+    static constexpr bool isparallel = parallel;
+
+  protected :
     bool Initialized() const;
     bool Finalized() const;
-    ~Manager() = default;
-    
-    static constexpr bool isparallel = parallel;
   };
 } // namespace mfem_mgis
 
