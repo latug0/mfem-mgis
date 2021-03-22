@@ -1,8 +1,8 @@
 /*!
  * \file   include/MFEMMGIS/Manager.hxx
 
- * \brief
- * Manage start and death of a given simulation.
+ * \brief class designed to handling start and death of a given simulation, taking
+ *        in charge the MPI parallelism.
  *
  * \author Guillaume Latu
  * \date   19/03/2020
@@ -25,12 +25,55 @@ namespace mfem_mgis {
 
   class ManagerBase {
   public :
+
+    /*!
+     * \brief Initialize Manager and distributed parallelism (if needed).
+     */
     virtual void Init() const = 0;
+
+    /*!
+     * \brief Initialize Manager and distributed parallelism (if needed).
+     *
+     * Compared the `Init` function without parameters, this function
+     * handles and broadcast parameters `argc` and `argv` to all MPI
+     * processes (if the setting is not serial).
+     *
+     * \param[in] argc: number of command line parameters
+     * \param[in] argv: array of strings that stores input parameters
+     */
     virtual void Init(int *argc, char ***argv) const = 0;
+
+    /*!
+     * \brief Terminate the Manager and close MPI properly.
+     */
     virtual void Finalize() const = 0;
+
+    /*!
+     * \brief Terminate the Manager and close MPI properly with a final call to exit.
+     *
+     * Optional arguments permit to print a `message` on console, and to
+     * exit the program with an integer return code `errcode`; 
+     *
+     * \param[in] message: message to be printed at screen
+     * \param[in] errcode: return code
+     */
     virtual void FinalizeExit (const std::string &message={}, const int &errcode=EXIT_FAILURE) const = 0;
+
+    /*!
+     * \brief Terminate the Manager and close MPI properly with a final call to exit.
+     *
+     * Optional arguments permit to print a `message` on console, and to
+     * exit the program with an integer return code `errcode`.
+     *
+     * \param[in] message: message to be printed at screen
+     * \param[in] errcode: return code
+     */
     virtual void Abort (const std::string &message={}, const int &errcode=EXIT_FAILURE) const = 0;
+    
     virtual ~ManagerBase() = default;
+    /* !
+       \brief member variable that stores if Manager handles MPI parallelism or not.
+    */
     static bool isparallel;
   };
   
