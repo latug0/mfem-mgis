@@ -14,7 +14,7 @@
 #ifdef MFEM_USE_MPI
 #include <mpi.h>
 #else
-#define MPI_COMM_WORLD 0
+#define MPI_COMM_WORLD 
 //#define MPI_SUCCESS 0
 //#define MPI_Comm_rank(args...) (0)
 //#define MPI_Comm_size(args...) (1)
