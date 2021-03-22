@@ -207,13 +207,14 @@ struct TestParameters {
   int order = 1;
   int tcase = 0;
   int linearsolver = 0;
+  mfem_mgis::ManagerBase* manager;
 };
 
 template <bool parallel>
 TestParameters parseCommandLineOptions(int &argc, char* argv[]){
   TestParameters p;
   // options treatment
-  mfem_mgis::Manager::Init<parallel>(&argc, &argv);
+  p.manager = new mfem_mgis::Manager<parallel>(&argc, &argv);
   mfem::OptionsParser args(argc, argv);
   args.AddOption(&p.mesh_file, "-m", "--mesh", "Mesh file to use.");
   args.AddOption(&p.library, "-l", "--library", "Material library.");
@@ -237,9 +238,8 @@ TestParameters parseCommandLineOptions(int &argc, char* argv[]){
   return p;
 }
 
-template <bool parallel>
-void exit_on_failure () {
-  mfem_mgis::Manager::Finalize<parallel>();
+void exit_on_failure (const mfem_mgis::ManagerBase *manager) {
+  manager->Finalize();
   std::exit(EXIT_FAILURE);
 }
 
@@ -253,7 +253,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
       auto smesh = std::make_shared<mfem::Mesh>(p.mesh_file, 1, 1);
       if (dim != smesh->Dimension()) {
         std::cerr << "Invalid mesh dimension \n";
-        exit_on_failure<parallel>();
+        exit_on_failure(p.manager);
       }
       for (int i = 0 ; i < 2 ; i++)
         smesh->UniformRefinement();
@@ -262,7 +262,7 @@ void executeMFEMMGISTest(const TestParameters& p) {
       mesh = std::make_shared<mfem::Mesh>(p.mesh_file, 1, 1);
       if (dim != mesh->Dimension()) {
         std::cerr << "Invalid mesh dimension \n";
-        exit_on_failure<parallel>();
+        exit_on_failure(p.manager);
       }
   }
   // building the non linear problem
@@ -305,11 +305,11 @@ void executeMFEMMGISTest(const TestParameters& p) {
   problem.solve(0, 1);
   //
   if (!checkSolution(problem, p.tcase)) {
-    exit_on_failure<parallel>();
+    exit_on_failure(p.manager);
   }
   //
   exportResults(problem, p.tcase);
-  if constexpr(parallel) MPI_Finalize();
+  p.manager->Finalize();
 }
 
 struct ElasticityNonLinearIntegrator final
