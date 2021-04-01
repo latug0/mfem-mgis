@@ -44,7 +44,7 @@ target_link_libraries(UniaxialTensileTest
 add_dependencies(check UniaxialTensileTest)
 
 function(add_unilateral_test behaviour internal_state_variable)
-  set(test "UniaxialTensileTest-${behaviour}-${linear_solver}")
+  set(test "UniaxialTensileTest-${behaviour}")
   add_test(NAME ${test}
    COMMAND UniaxialTensileTest
    "--mesh" "${CMAKE_CURRENT_SOURCE_DIR}/cube.mesh"
