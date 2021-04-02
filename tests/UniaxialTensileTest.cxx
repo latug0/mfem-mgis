@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
   auto mesh = std::make_shared<mfem::ParMesh>(MPI_COMM_WORLD, *smesh);
   mesh->UniformRefinement();
   mesh->UniformRefinement();
+  mesh->UniformRefinement();
 #else
   auto mesh = smesh;
 #endif
@@ -214,6 +215,7 @@ int main(int argc, char** argv) {
         check(g1[i], g1_ref, eps, "invalid transverse strain");
         check(v[i], v_ref, eps, "invalid internal state variable");
       }
+      MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_C_BOOL, MPI_LAND, MPI_COMM_WORLD);
     }
   }
   MPI_Finalize();
