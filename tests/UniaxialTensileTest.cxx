@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
 #ifdef MFEM_USE_MUMPS
     } else if (linearsolver ==3) {
       problem.setLinearSolver("MUMPSSolver",
-			      {{"Symmetric", true}});
+                              {{"Symmetric", true}});
 #endif
     } else {
       std::cerr << "unsupported linear solver\n";
