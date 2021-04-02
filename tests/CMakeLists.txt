@@ -142,4 +142,6 @@ endif()
 
 install(FILES Plasticity.mfront cube.mesh
   DESTINATION "share/mfem-mgis/examples/ex1")
+install(FILES Plasticity.mfront
+  DESTINATION "share/mfem-mgis/examples/ex2")
 
