@@ -134,15 +134,15 @@ int main(int argc, char** argv) {
                                         {"AbsoluteTolerance", 1e-12},
                                         {"RelativeTolerance", 1e-12},
                                         {"MaximumNumberOfIterations", 300}});
-  #ifdef MFEM_USE_SUITESPARSE
+#ifdef MFEM_USE_SUITESPARSE
     } else if (linearsolver ==2) {
       problem.setLinearSolver("UMFPackSolver", {});
-  #endif
-  #ifdef MFEM_USE_MUMPS
+#endif
+#ifdef MFEM_USE_MUMPS
     } else if (linearsolver ==3) {
       problem.setLinearSolver("MUMPSSolver",
-  			    {{"Symmetric", true}});
-  #endif
+			      {{"Symmetric", true}});
+#endif
     } else {
       std::cerr << "unsupported linear solver\n";
       exit_on_failure();
