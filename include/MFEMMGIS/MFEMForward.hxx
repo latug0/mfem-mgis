@@ -16,6 +16,7 @@
 #define MPI_COMM_WORLD 0
 #define MPI_Finalize(args...) {}
 #define MPI_Init(args...) {}
+#define MPI_Comm_rank(comm,rank) {*rank=0;}
 #endif
 
 

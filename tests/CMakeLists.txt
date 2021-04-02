@@ -133,7 +133,7 @@ if (MFEM_USE_MPI)
 
   if(MFEM_USE_MUMPS)
     add_unilateral_testp(OrthotropicElasticity EquivalentStrain 3 1)
-#PB->too small test case for 4 procs#    add_unilateral_testp(OrthotropicElasticity EquivalentStrain 3 4)
+    add_unilateral_testp(OrthotropicElasticity EquivalentStrain 3 4)
     add_periodic_testp(0 3 1)
     add_periodic_testp(0 3 4)
   endif()

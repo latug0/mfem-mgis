@@ -11,6 +11,7 @@
 #include "mfem/general/optparser.hpp"
 #include "mfem/linalg/solvers.hpp"
 #include "mfem/fem/datacollection.hpp"
+#include "MFEMMGIS/Profiler.hxx"
 #include "MFEMMGIS/Parameters.hxx"
 #include "MFEMMGIS/Material.hxx"
 #include "MFEMMGIS/UniformDirichletBoundaryCondition.hxx"
@@ -30,8 +31,11 @@ int main(int argc, char** argv) {
   const char* reference_file = nullptr;
   const char* isv_name = nullptr;
   int linearsolver = 0;
+  int rank = 0;
   auto order = 1;
+  
   MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   // options treatment
   mfem::OptionsParser args(argc, argv);
   args.AddOption(&mesh_file, "-m", "--mesh", "Mesh file to use.");
@@ -51,28 +55,33 @@ int main(int argc, char** argv) {
     exit_on_failure();
   }
   args.PrintOptions(std::cout);
-  // loading the mesh
-  auto smesh = std::make_shared<mfem::Mesh>(mesh_file, 1, 1);
-  if (dim != smesh->Dimension()) {
-    std::cerr << "Invalid mesh dimension \n";
-    exit_on_failure();
-  }
-#ifdef DO_USE_MPI
-  auto mesh = std::make_shared<mfem::ParMesh>(MPI_COMM_WORLD, *smesh);
-  mesh->UniformRefinement();
-  mesh->UniformRefinement();
-  mesh->UniformRefinement();
-#else
-  auto mesh = smesh;
-#endif
-  auto fed = std::make_shared<mfem_mgis::FiniteElementDiscretization>(
-              mesh, std::make_shared<mfem::H1_FECollection>(order, dim), dim);
 
   auto success = true;
   {
+    const auto main_timer = mfem_mgis::getTimer("main");
+
+    // loading the mesh
+    auto smesh = std::make_shared<mfem::Mesh>(mesh_file, 1, 1);
+    if (dim != smesh->Dimension()) {
+      std::cerr << "Invalid mesh dimension \n";
+      exit_on_failure();
+    }
+#ifdef DO_USE_MPI
+    auto mesh = std::make_shared<mfem::ParMesh>(MPI_COMM_WORLD, *smesh);
+    mesh->UniformRefinement();
+    mesh->UniformRefinement();
+    mesh->UniformRefinement();
+#else
+    auto mesh = smesh;
+#endif
+    auto fed = std::make_shared<mfem_mgis::FiniteElementDiscretization>(
+        mesh, std::make_shared<mfem::H1_FECollection>(order, dim), dim);
+    
+
     // building the non linear problem
-    mfem_mgis::NonLinearEvolutionProblem problem(
-        fed, mgis::behaviour::Hypothesis::TRIDIMENSIONAL);
+    mfem_mgis::NonLinearEvolutionProblem problem(fed,
+        mgis::behaviour::Hypothesis::TRIDIMENSIONAL);
+
     problem.addBehaviourIntegrator("Mechanics", 1, library, behaviour);
     // materials
     auto& m1 = problem.getMaterial(1);
@@ -122,7 +131,6 @@ int main(int argc, char** argv) {
               }
               return -0.021 + 0.1 * (t - 0.6);
             }));
-    
     // solving the problem
     if (linearsolver ==0) {
       problem.setLinearSolver("CGSolver", {{"VerbosityLevel", 1},
@@ -147,8 +155,9 @@ int main(int argc, char** argv) {
       std::cerr << "unsupported linear solver\n";
       exit_on_failure();
     }
+
     problem.setSolverParameters({{"VerbosityLevel", 0},
-                                 {"RelativeTolerance", 1e-9},
+                                 {"RelativeTolerance", 1e-12},
                                  {"AbsoluteTolerance", 0.},
                                  {"MaximumNumberOfIterations", 10}});
   
@@ -156,40 +165,58 @@ int main(int argc, char** argv) {
     problem.addPostProcessing("ParaviewExportResults",
                               {{"OutputFileName", "UniaxialTensileTestOutput-" +
                                                       std::string(behaviour)}});
-    //
-    const auto vo =
-        mgis::behaviour::getVariableOffset(m1.b.isvs, isv_name, m1.b.hypothesis);
+
+    const auto vo = mgis::behaviour::getVariableOffset(m1.b.isvs, isv_name,
+                                                       m1.b.hypothesis);
+
     auto g0 = std::vector<mfem_mgis::real>{};
     auto g1 = std::vector<mfem_mgis::real>{};
     auto tf0 = std::vector<mfem_mgis::real>{};
     auto v = std::vector<mfem_mgis::real>{};
-    // loop over time step
-    g0.push_back(m1.s0.gradients[0]);
-    g1.push_back(m1.s0.gradients[1]);
-    tf0.push_back(m1.s0.thermodynamic_forces[0]);
-    v.push_back(m1.s0.internal_state_variables[vo]);
     const auto nsteps = mfem_mgis::size_type{100};
     const auto dt = mfem_mgis::real{1} / nsteps;
     auto t = mfem_mgis::real{0};
+
+    // loop over time step
+    if (rank == 0) {
+      g0.push_back(m1.s0.gradients[0]);
+      g1.push_back(m1.s0.gradients[1]);
+      tf0.push_back(m1.s0.thermodynamic_forces[0]);
+      v.push_back(m1.s0.internal_state_variables[vo]);
+    }
+      
     for (mfem_mgis::size_type i = 0; i != nsteps; ++i) {
       // resolution
-      std::cout << "Step: " << i << std::endl;
-      problem.solve(t, dt);
-      problem.executePostProcessings(t, dt);
-      problem.update();
+      const auto step_timer = mfem_mgis::getTimer("step" + std::to_string(i));
+      {
+        const auto solve_timer = mfem_mgis::getTimer("solve");
+        problem.solve(t, dt);
+      }
+      {
+        const auto post_processing_timer = mfem_mgis::getTimer("post_processing");
+        problem.executePostProcessings(t, dt);
+      }
+      {
+        const auto update_timer = mfem_mgis::getTimer("update");
+        problem.update();
+      }
       t += dt;
       //
-      g0.push_back(m1.s1.gradients[0]);
-      g1.push_back(m1.s1.gradients[1]);
-      tf0.push_back(m1.s1.thermodynamic_forces[0]);
-      v.push_back(m1.s1.internal_state_variables[vo]);
+      if (rank == 0) {
+        g0.push_back(m1.s1.gradients[0]);
+        g1.push_back(m1.s1.gradients[1]);
+        tf0.push_back(m1.s1.thermodynamic_forces[0]);
+        v.push_back(m1.s1.internal_state_variables[vo]);
+      }
     }
+
     // save the traction curve
     std::ofstream out("UniaxialTensileTest-" + std::string(behaviour) + ".txt");
     out.precision(14);
     for (std::vector<mfem_mgis::real>::size_type i = 0; i != g0.size(); ++i) {
       out << g0[i] << " " << g1[i] << " " << tf0[i] << " " << v[i] << '\n';
     }
+
     // comparison to reference results
     std::ifstream in(reference_file);
     if (in) {
@@ -218,6 +245,7 @@ int main(int argc, char** argv) {
       MPI_Allreduce(MPI_IN_PLACE, &success, 1, MPI_C_BOOL, MPI_LAND, MPI_COMM_WORLD);
     }
   }
+  //  mfem_mgis::Profiler::getProfiler().print(std::cout);
   MPI_Finalize();
   return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
