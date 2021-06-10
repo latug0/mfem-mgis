@@ -9,7 +9,6 @@
 #define LIB_MFEM_MGIS_CONFIG_HXX
 
 #include <cstdlib>
-#include <memory>
 #include "MGIS/Config.hxx"
 #include "MGIS/Raise.hxx"
 #include "MFEMMGIS/MGISForward.hxx"
@@ -71,15 +70,6 @@ namespace mfem_mgis {
    * This call is optional if the code exits normally.
    */
   MFEM_MGIS_EXPORT void finalize();
-  /*!
-   * \return a parser for command line arguments
-   * This function should be called only after `initialize` function.
-   */
-  MFEM_MGIS_EXPORT std::shared_ptr<mfem::OptionsParser> beginParser(int&, MainFunctionArguments&);
-  /*!
-   * \brief function that will end properly the commnd line parse
-   */
-  MFEM_MGIS_EXPORT void endParser(std::shared_ptr<mfem::OptionsParser>);
   /*!
    * \brief gives MPI rank.
    */
